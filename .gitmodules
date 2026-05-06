@@ -7,3 +7,6 @@
 [submodule "extern/asdcplib"]
 	path = extern/asdcplib
 	url = https://github.com/cinecert/asdcplib.git
+[submodule "extern/photon"]
+	path = extern/photon
+	url = https://github.com/Netflix/photon.git

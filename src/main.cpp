@@ -3,6 +3,7 @@
 #include "dcpdoctor/diff.h"
 #include "dcpdoctor/fixes.h"
 #include "dcpdoctor/kdm.h"
+#include "dcpdoctor/photon.h"
 #include "dcpdoctor/report.h"
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/theater.h"
@@ -94,8 +95,14 @@ int main(int argc, char* argv[]) {
 
     // Additional validate flags
     bool suggest_fixes_flag = false;
+    bool imf_mode = false;
+    std::string photon_dir_opt;
     validate_cmd->add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
+    validate_cmd->add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
+    validate_cmd->add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
     app.add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
+    app.add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
+    app.add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
 
     // Also allow validate args on the main app for backward compat
     app.add_flag("-v,--verbose", verbose, "Show info-level notes");
@@ -255,6 +262,17 @@ int main(int argc, char* argv[]) {
         if (!manifest_file.empty()) {
             auto manifest_notes = dcpdoctor::compare_manifest(dir, fs::path(manifest_file));
             for (auto& note : manifest_notes)
+                result.add(std::move(note));
+        }
+
+        // IMF validation via Netflix Photon
+        if (imf_mode) {
+            auto photon_config = dcpdoctor::default_photon_config();
+            if (!photon_dir_opt.empty())
+                photon_config.photon_dir = photon_dir_opt;
+            auto photon_result = dcpdoctor::run_photon(dir, photon_config);
+            auto photon_notes = dcpdoctor::photon_to_notes(photon_result, dir);
+            for (auto& note : photon_notes)
                 result.add(std::move(note));
         }
 
