@@ -38,6 +38,7 @@ enum class Code {
     // MXF
     mxf_unreadable,
     mxf_hash_mismatch,
+    mxf_invalid_structure,
 
     // Signature
     signature_invalid,

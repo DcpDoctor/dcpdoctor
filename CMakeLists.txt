@@ -52,7 +52,12 @@ add_library(dcpdoctor_core STATIC
     src/diff.cpp
     src/cache.cpp
     src/theater.cpp
-    src/fixes.cpp)
+    src/fixes.cpp
+    src/mxf_advanced.cpp
+    src/kdm_advanced.cpp
+    src/hfr_stereo.cpp
+    src/imf.cpp
+    src/quality.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include

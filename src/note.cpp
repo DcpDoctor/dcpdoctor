@@ -31,6 +31,7 @@ std::string_view Note::code_str() const {
     case Code::cpl_invalid_edit_rate: return "cpl_invalid_edit_rate";
     case Code::mxf_unreadable: return "mxf_unreadable";
     case Code::mxf_hash_mismatch: return "mxf_hash_mismatch";
+    case Code::mxf_invalid_structure: return "mxf_invalid_structure";
     case Code::signature_invalid: return "signature_invalid";
     case Code::certificate_expired: return "certificate_expired";
     case Code::certificate_chain_broken: return "certificate_chain_broken";
