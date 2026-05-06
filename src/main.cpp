@@ -21,11 +21,10 @@
 namespace fs = std::filesystem;
 
 static void suppress_xml_error(void* /*ctx*/, const char* /*msg*/, ...) {}
-static void suppress_xml_structured_error(void* /*ctx*/, const xmlError* /*err*/) {}
 
 int main(int argc, char* argv[]) {
     xmlSetGenericErrorFunc(nullptr, suppress_xml_error);
-    xmlSetStructuredErrorFunc(nullptr, suppress_xml_structured_error);
+    xmlSetStructuredErrorFunc(nullptr, nullptr);
 
     CLI::App app{"DcpDoctor - DCP validator and verifier"};
     app.set_version_flag("--version", "0.1.0");

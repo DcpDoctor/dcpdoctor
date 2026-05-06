@@ -221,9 +221,9 @@ std::vector<Note> compare_manifest(const fs::path& dcp_dir,
         if (!entry.is_regular_file()) continue;
         auto fname = entry.path().filename().string();
         if (!manifest_files.contains(fname)) {
-            notes.emplace_back(Severity::info, Code::asset_not_found,
+            notes.push_back(Note{Severity::info, Code::asset_not_found,
                             "File in DCP not listed in manifest: " + fname,
-                            entry.path());
+                            entry.path()});
         }
     }
 
