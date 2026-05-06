@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PackingList xmlns="http://www.smpte-ra.org/schemas/429-8/2007/PKL">
+  <Id>urn:uuid:10000000-0000-0000-0000-000000000001</Id>
+  <IssueDate>2025-01-01T00:00:00Z</IssueDate>
+  <Issuer>dcplint-test</Issuer>
+  <Creator>dcplint-test</Creator>
+  <AssetList>
+    <Asset>
+      <Id>urn:uuid:20000000-0000-0000-0000-000000000001</Id>
+      <Hash>5ChLoKosKSCKifccyez0aIxjU28=</Hash>
+      <Size>0</Size>
+      <Type>text/xml</Type>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:30000000-0000-0000-0000-000000000001</Id>
+      <Hash>+06s3R6c/xlYS/eBOVC9c3uGziA=</Hash>
+      <Size>442</Size>
+      <Type>application/mxf</Type>
+    </Asset>
+    <Asset>
+      <Id>urn:uuid:40000000-0000-0000-0000-000000000001</Id>
+      <Hash>MT3/F3fVQFaZF6W7jdiTustaWv0=</Hash>
+      <Size>426</Size>
+      <Type>application/mxf</Type>
+    </Asset>
+  </AssetList>
+</PackingList>
