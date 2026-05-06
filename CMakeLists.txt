@@ -14,6 +14,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBXML2 REQUIRED IMPORTED_TARGET libxml-2.0)
 pkg_check_modules(OPENSSL REQUIRED IMPORTED_TARGET openssl)
 pkg_check_modules(XERCES REQUIRED IMPORTED_TARGET xerces-c)
+pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
 
 # CLI11 (header-only)
 add_subdirectory(extern/CLI11 EXCLUDE_FROM_ALL)
@@ -46,7 +47,12 @@ add_library(dcpdoctor_core STATIC
     src/note.cpp
     src/timeline.cpp
     src/advanced.cpp
-    src/server.cpp)
+    src/server.cpp
+    src/kdm.cpp
+    src/diff.cpp
+    src/cache.cpp
+    src/theater.cpp
+    src/fixes.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include
@@ -55,6 +61,7 @@ target_link_libraries(dcpdoctor_core PUBLIC
     PkgConfig::LIBXML2
     PkgConfig::OPENSSL
     PkgConfig::XERCES
+    PkgConfig::SQLITE3
     spdlog::spdlog
     libasdcp)
 

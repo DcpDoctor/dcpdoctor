@@ -1,7 +1,11 @@
 #include "dcpdoctor/dcpdoctor.h"
 #include "dcpdoctor/advanced.h"
+#include "dcpdoctor/diff.h"
+#include "dcpdoctor/fixes.h"
+#include "dcpdoctor/kdm.h"
 #include "dcpdoctor/report.h"
 #include "dcpdoctor/server.h"
+#include "dcpdoctor/theater.h"
 #include "dcpdoctor/timeline.h"
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
@@ -67,6 +71,32 @@ int main(int argc, char* argv[]) {
     serve_cmd->add_option("--bind", bind_addr, "Bind address (default: 0.0.0.0)");
     serve_cmd->add_option("--port,-p", port, "Port (default: 8080)");
 
+    // === DIFF subcommand ===
+    auto* diff_cmd = app.add_subcommand("diff", "Compare two DCPs");
+    std::string diff_a, diff_b;
+    bool diff_hashes = false;
+    diff_cmd->add_option("dcp_a", diff_a, "First DCP directory")->required()->check(CLI::ExistingDirectory);
+    diff_cmd->add_option("dcp_b", diff_b, "Second DCP directory")->required()->check(CLI::ExistingDirectory);
+    diff_cmd->add_flag("--hashes", diff_hashes, "Compare content hashes (slow)");
+
+    // === PROFILES subcommand ===
+    auto* profiles_cmd = app.add_subcommand("profiles", "List or check theater compatibility profiles");
+    std::string profile_name;
+    std::string profile_dcp;
+    profiles_cmd->add_option("--check", profile_name, "Check DCP against named profile");
+    profiles_cmd->add_option("--dcp", profile_dcp, "DCP directory to check")->check(CLI::ExistingDirectory);
+
+    // === KDM subcommand ===
+    auto* kdm_cmd = app.add_subcommand("kdm", "Validate a KDM file");
+    std::string kdm_file, kdm_dcp;
+    kdm_cmd->add_option("kdm_file", kdm_file, "KDM XML file")->required()->check(CLI::ExistingFile);
+    kdm_cmd->add_option("--dcp", kdm_dcp, "DCP directory to validate against")->check(CLI::ExistingDirectory);
+
+    // Additional validate flags
+    bool suggest_fixes_flag = false;
+    validate_cmd->add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
+    app.add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
+
     // Also allow validate args on the main app for backward compat
     app.add_flag("-v,--verbose", verbose, "Show info-level notes");
     app.add_flag("-q,--quiet", quiet, "Only show errors");
@@ -115,6 +145,71 @@ int main(int argc, char* argv[]) {
         opts.check_signatures = true;
         opts.check_picture_details = true;
         dcpdoctor::serve_api(bind_addr, port, opts);
+        return 0;
+    }
+
+    // === DIFF mode ===
+    if (diff_cmd->parsed()) {
+        auto diff = dcpdoctor::compare_dcps(fs::path(diff_a), fs::path(diff_b), diff_hashes);
+        dcpdoctor::write_diff_report(std::cout, diff);
+        return diff.content_identical ? 0 : 1;
+    }
+
+    // === PROFILES mode ===
+    if (profiles_cmd->parsed()) {
+        if (profile_name.empty()) {
+            // List all profiles
+            auto profiles = dcpdoctor::get_theater_profiles();
+            std::cout << "Theater Compatibility Profiles:\n\n";
+            for (const auto& p : profiles) {
+                std::cout << "  " << p.name << " (" << p.vendor << ")\n";
+                std::cout << "    4K: " << (p.supports_4k ? "Yes" : "No")
+                         << "  HFR: " << (p.supports_hfr ? "Yes" : "No")
+                         << "  Atmos: " << (p.supports_atmos ? "Yes" : "No")
+                         << "  Interop: " << (p.supports_interop ? "Yes" : "No")
+                         << "\n";
+            }
+        } else if (!profile_dcp.empty()) {
+            auto* profile = dcpdoctor::find_profile(profile_name);
+            if (!profile) {
+                std::cerr << "Unknown profile: " << profile_name << "\n";
+                return 2;
+            }
+            auto result = dcpdoctor::verify(fs::path(profile_dcp));
+            auto notes = dcpdoctor::check_theater_compatibility(
+                fs::path(profile_dcp), result, *profile);
+            std::cout << "Theater compatibility: " << profile->name << "\n\n";
+            for (const auto& n : notes)
+                std::cout << "[" << n.severity_str() << "] " << n.message << "\n";
+            if (notes.empty())
+                std::cout << "No compatibility issues detected.\n";
+        } else {
+            std::cerr << "Use --check PROFILE --dcp DIR to check compatibility\n";
+            return 2;
+        }
+        return 0;
+    }
+
+    // === KDM mode ===
+    if (kdm_cmd->parsed()) {
+        auto info = dcpdoctor::parse_kdm(fs::path(kdm_file));
+        if (!info.valid) {
+            std::cerr << "Invalid KDM: " << info.error << "\n";
+            return 1;
+        }
+        std::cout << "KDM Information:\n";
+        std::cout << "  Content: " << info.content_title << "\n";
+        std::cout << "  CPL ID:  " << info.cpl_id << "\n";
+        std::cout << "  Status:  " << (info.is_expired ? "EXPIRED" :
+                     info.is_not_yet_valid ? "NOT YET VALID" : "VALID") << "\n";
+
+        if (!kdm_dcp.empty()) {
+            auto notes = dcpdoctor::validate_kdm(fs::path(kdm_file), fs::path(kdm_dcp));
+            for (const auto& n : notes)
+                std::cout << "[" << n.severity_str() << "] " << n.message << "\n";
+            if (notes.empty())
+                std::cout << "\nKDM validates against DCP.\n";
+        }
         return 0;
     }
 
@@ -179,6 +274,20 @@ int main(int argc, char* argv[]) {
                 dcpdoctor::write_report(result, dir, out, format);
             } else {
                 dcpdoctor::write_report(result, dir, std::cout, format);
+            }
+
+            // Fix suggestions
+            if (suggest_fixes_flag && !result.notes.empty()) {
+                auto fixes = dcpdoctor::suggest_fixes(result.notes);
+                if (!fixes.empty()) {
+                    std::cout << "\nSuggested Fixes:\n";
+                    for (size_t fi = 0; fi < fixes.size(); ++fi) {
+                        std::cout << "  " << (fi + 1) << ". " << fixes[fi].description;
+                        if (!fixes[fi].command.empty())
+                            std::cout << "\n     Command: " << fixes[fi].command;
+                        std::cout << "\n";
+                    }
+                }
             }
         }
 

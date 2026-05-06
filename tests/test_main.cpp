@@ -8,6 +8,11 @@
 #include "dcpdoctor/bitrate.h"
 #include "dcpdoctor/audio.h"
 #include "dcpdoctor/timeline.h"
+#include "dcpdoctor/kdm.h"
+#include "dcpdoctor/diff.h"
+#include "dcpdoctor/cache.h"
+#include "dcpdoctor/theater.h"
+#include "dcpdoctor/fixes.h"
 #include <cassert>
 #include <cstring>
 #include <filesystem>
@@ -658,6 +663,242 @@ TEST(j2k_deep_validate_nonexistent) {
     auto info = dcpdoctor::deep_validate_j2k("/tmp/nonexistent_j2k.mxf");
     ASSERT(!info.valid);
     ASSERT(!info.error.empty());
+}
+
+// === KDM Tests ===
+
+TEST(kdm_parse_nonexistent) {
+    auto info = dcpdoctor::parse_kdm("/tmp/nonexistent_kdm.xml");
+    ASSERT(!info.valid);
+    ASSERT(!info.error.empty());
+}
+
+TEST(kdm_validate_nonexistent) {
+    auto notes = dcpdoctor::validate_kdm("/tmp/nonexistent_kdm.xml", "/tmp/nonexistent_dcp");
+    ASSERT(!notes.empty());
+    ASSERT(notes[0].severity == dcpdoctor::Severity::error);
+}
+
+// === DCP Diff Tests ===
+
+TEST(diff_nonexistent_dcps) {
+    auto diff = dcpdoctor::compare_dcps("/tmp/nonexistent_a", "/tmp/nonexistent_b");
+    // Both don't exist - should have empty assets
+    ASSERT(diff.assets.empty());
+    ASSERT(diff.structure_identical);
+}
+
+TEST(diff_report_identical) {
+    dcpdoctor::DcpDiff diff;
+    diff.dcp_a = "/tmp/a";
+    diff.dcp_b = "/tmp/b";
+    diff.structure_identical = true;
+    diff.content_identical = true;
+
+    std::ostringstream out;
+    dcpdoctor::write_diff_report(out, diff);
+    std::string output = out.str();
+    ASSERT(output.find("IDENTICAL") != std::string::npos);
+}
+
+TEST(diff_report_different) {
+    dcpdoctor::DcpDiff diff;
+    diff.dcp_a = "/tmp/a";
+    diff.dcp_b = "/tmp/b";
+    diff.structure_identical = false;
+    diff.content_identical = false;
+    diff.assets.push_back({"id1", "file1.mxf",
+        dcpdoctor::DcpDiff::AssetDiff::Status::added, "Only in b"});
+    diff.assets.push_back({"id2", "file2.mxf",
+        dcpdoctor::DcpDiff::AssetDiff::Status::removed, "Only in a"});
+
+    std::ostringstream out;
+    dcpdoctor::write_diff_report(out, diff);
+    std::string output = out.str();
+    ASSERT(output.find("DIFFERENT") != std::string::npos);
+    ASSERT(output.find("file1.mxf") != std::string::npos);
+    ASSERT(output.find("+") != std::string::npos);
+    ASSERT(output.find("-") != std::string::npos);
+}
+
+// === Hash Cache Tests ===
+
+TEST(cache_basic_operations) {
+    // Create a temp file to cache
+    fs::path tmp = "/tmp/dcpdoctor_test_cache.db";
+    fs::path test_file = "/tmp/dcpdoctor_test_file.txt";
+
+    // Create test file
+    {
+        std::ofstream f(test_file);
+        f << "test content for caching";
+    }
+
+    {
+        dcpdoctor::HashCache cache(tmp);
+        ASSERT(cache.is_open());
+        ASSERT(cache.size() == 0);
+
+        cache.put(test_file, "abc123hash");
+        ASSERT(cache.size() == 1);
+
+        auto hash = cache.get(test_file);
+        ASSERT(hash == "abc123hash");
+
+        cache.clear();
+        ASSERT(cache.size() == 0);
+    }
+
+    // Cleanup
+    fs::remove(tmp);
+    fs::remove(test_file);
+}
+
+TEST(cache_stale_detection) {
+    fs::path tmp = "/tmp/dcpdoctor_test_cache2.db";
+    fs::path test_file = "/tmp/dcpdoctor_test_file2.txt";
+
+    {
+        std::ofstream f(test_file);
+        f << "original content";
+    }
+
+    {
+        dcpdoctor::HashCache cache(tmp);
+        cache.put(test_file, "original_hash");
+
+        // Modify the file
+        {
+            std::ofstream f(test_file);
+            f << "modified content with different size!!!";
+        }
+
+        // Cache should return empty (stale - size changed)
+        auto hash = cache.get(test_file);
+        ASSERT(hash.empty());
+    }
+
+    fs::remove(tmp);
+    fs::remove(test_file);
+}
+
+// === Theater Profile Tests ===
+
+TEST(theater_profiles_exist) {
+    auto profiles = dcpdoctor::get_theater_profiles();
+    ASSERT(profiles.size() >= 8);  // We defined 10 profiles
+}
+
+TEST(theater_find_dolby) {
+    auto* profile = dcpdoctor::find_profile("dolby ims3000");
+    ASSERT(profile != nullptr);
+    ASSERT(profile->vendor == "Dolby");
+    ASSERT(profile->supports_atmos);
+}
+
+TEST(theater_find_barco) {
+    auto* profile = dcpdoctor::find_profile("barco sp4k");
+    ASSERT(profile != nullptr);
+    ASSERT(profile->vendor == "Barco");
+    ASSERT(profile->supports_4k);
+}
+
+TEST(theater_find_imax) {
+    auto* profile = dcpdoctor::find_profile("imax");
+    ASSERT(profile != nullptr);
+    ASSERT(!profile->supports_interop);
+}
+
+TEST(theater_find_nonexistent) {
+    auto* profile = dcpdoctor::find_profile("nonexistent_server_xyz");
+    ASSERT(profile == nullptr);
+}
+
+TEST(theater_compatibility_interop_rejected) {
+    dcpdoctor::VerifyResult result;
+    result.standard = dcpdoctor::Standard::interop;
+
+    auto* profile = dcpdoctor::find_profile("dolby cinema");
+    ASSERT(profile != nullptr);
+
+    auto notes = dcpdoctor::check_theater_compatibility("/tmp/test_dcp", result, *profile);
+    bool found_rejection = false;
+    for (auto& n : notes) {
+        if (n.severity == dcpdoctor::Severity::error &&
+            n.message.find("Interop") != std::string::npos)
+            found_rejection = true;
+    }
+    ASSERT(found_rejection);
+}
+
+// === Fix Suggestion Tests ===
+
+TEST(fixes_assetmap_rename) {
+    std::vector<dcpdoctor::Note> notes;
+    notes.push_back(dcpdoctor::Note{dcpdoctor::Severity::error,
+                    dcpdoctor::Code::smpte_naming_violation,
+                    "BV2.1 requires ASSETMAP.xml filename", "/tmp/dcp"});
+
+    auto fixes = dcpdoctor::suggest_fixes(notes);
+    ASSERT(!fixes.empty());
+    bool found_rename = false;
+    for (auto& fix : fixes) {
+        if (fix.command.find("ASSETMAP") != std::string::npos)
+            found_rename = true;
+    }
+    ASSERT(found_rename);
+}
+
+TEST(fixes_isdcf_naming) {
+    std::vector<dcpdoctor::Note> notes;
+    notes.push_back(dcpdoctor::Note{dcpdoctor::Severity::warning,
+                    dcpdoctor::Code::isdcf_naming_violation,
+                    "Not ISDCF compliant", "/tmp/cpl.xml"});
+
+    auto fixes = dcpdoctor::suggest_fixes(notes);
+    ASSERT(!fixes.empty());
+    bool found_isdcf = false;
+    for (auto& fix : fixes) {
+        if (fix.description.find("ISDCF") != std::string::npos)
+            found_isdcf = true;
+    }
+    ASSERT(found_isdcf);
+}
+
+TEST(fixes_empty_notes) {
+    std::vector<dcpdoctor::Note> notes;
+    auto fixes = dcpdoctor::suggest_fixes(notes);
+    ASSERT(fixes.empty());
+}
+
+// === Audio Sync Drift Tests ===
+
+TEST(audio_sync_no_drift) {
+    std::vector<dcpdoctor::TimelineReel> reels;
+    dcpdoctor::TimelineReel r;
+    r.has_picture = true;
+    r.has_sound = true;
+    r.picture_duration = 1000;
+    r.sound_duration = 1000;
+    reels.push_back(r);
+
+    auto notes = dcpdoctor::check_audio_sync(reels, "/tmp/cpl.xml");
+    ASSERT(notes.empty());
+}
+
+TEST(audio_sync_with_drift) {
+    std::vector<dcpdoctor::TimelineReel> reels;
+    dcpdoctor::TimelineReel r;
+    r.has_picture = true;
+    r.has_sound = true;
+    r.picture_duration = 1000;
+    r.sound_duration = 1005;  // 5 frame drift
+    reels.push_back(r);
+
+    auto notes = dcpdoctor::check_audio_sync(reels, "/tmp/cpl.xml");
+    ASSERT(!notes.empty());
+    ASSERT(notes[0].severity == dcpdoctor::Severity::warning);
+    ASSERT(notes[0].message.find("drift") != std::string::npos);
 }
 
 int main() {

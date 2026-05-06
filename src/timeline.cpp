@@ -202,4 +202,27 @@ void write_timeline_svg(std::ostream& out,
     out << "</svg>\n";
 }
 
+std::vector<Note> check_audio_sync(const std::vector<TimelineReel>& reels,
+                                    const std::filesystem::path& cpl_path) {
+    std::vector<Note> notes;
+
+    for (size_t i = 0; i < reels.size(); ++i) {
+        const auto& reel = reels[i];
+        if (!reel.has_picture || !reel.has_sound) continue;
+
+        int64_t drift = static_cast<int64_t>(reel.sound_duration) -
+                        static_cast<int64_t>(reel.picture_duration);
+
+        if (drift != 0) {
+            std::string msg = "Reel " + std::to_string(i + 1) +
+                             ": audio/picture duration mismatch (" +
+                             std::to_string(drift) + " frames drift)";
+            Severity sev = (std::abs(drift) > 1) ? Severity::warning : Severity::info;
+            notes.push_back(Note{sev, Code::reel_discontinuity, msg, cpl_path});
+        }
+    }
+
+    return notes;
+}
+
 } // namespace dcpdoctor

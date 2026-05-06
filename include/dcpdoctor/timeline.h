@@ -31,4 +31,8 @@ void write_timeline_svg(std::ostream& out,
 /// Extract timeline reels from a CPL file
 std::vector<TimelineReel> extract_timeline(const std::filesystem::path& cpl_path);
 
+/// Detect audio sync drift (picture vs sound duration mismatches)
+std::vector<Note> check_audio_sync(const std::vector<TimelineReel>& reels,
+                                    const std::filesystem::path& cpl_path);
+
 } // namespace dcpdoctor
