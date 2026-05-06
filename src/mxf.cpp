@@ -67,6 +67,14 @@ bool is_timed_text_container(const UL& ul) {
     return ul[12] == 0x02 && ul[13] == 0x0d;
 }
 
+bool is_dolby_atmos_container(const UL& ul) {
+    // Dolby Atmos / IAB: 06.0e.2b.34.04.01.01.0d.0d.01.03.01.02.1e.01.00
+    // Also check for DC Data container (used by Atmos):
+    // 06.0e.2b.34.04.01.01.xx.0d.01.03.01.02.0e.xx.xx
+    return (ul[12] == 0x02 && ul[13] == 0x1e) ||  // IAB
+           (ul[12] == 0x02 && ul[13] == 0x0e);    // DC Data (Atmos)
+}
+
 // Read BER-encoded length from stream
 uint64_t read_ber_length(std::ifstream& f) {
     uint8_t first = 0;
@@ -149,6 +157,7 @@ EssenceType detect_essence_type(const UL& ec_label) {
     if (is_pcm_container(ec_label)) return EssenceType::pcm_audio;
     if (is_mpeg2_container(ec_label)) return EssenceType::mpeg2;
     if (is_timed_text_container(ec_label)) return EssenceType::timed_text;
+    if (is_dolby_atmos_container(ec_label)) return EssenceType::dolby_atmos;
     return EssenceType::unknown;
 }
 
@@ -305,6 +314,7 @@ std::string_view essence_type_str(EssenceType t) {
         case EssenceType::mpeg2: return "MPEG-2";
         case EssenceType::pcm_audio: return "PCM Audio";
         case EssenceType::timed_text: return "Timed Text";
+        case EssenceType::dolby_atmos: return "Dolby Atmos (IAB)";
         default: return "Unknown";
     }
 }

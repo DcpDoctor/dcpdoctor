@@ -294,7 +294,15 @@ std::vector<Note> check_cross_references(const std::filesystem::path& dcp_dir,
                                           const std::vector<std::string>& known_asset_ids,
                                           const std::vector<std::filesystem::path>& cpl_paths) {
     std::vector<Note> notes;
-    std::set<std::string> known_ids(known_asset_ids.begin(), known_asset_ids.end());
+
+    // Normalize known IDs: strip urn:uuid: prefix for matching
+    std::set<std::string> known_ids;
+    for (const auto& id : known_asset_ids) {
+        if (id.starts_with("urn:uuid:"))
+            known_ids.insert(id.substr(9));
+        else
+            known_ids.insert(id);
+    }
 
     for (const auto& cpl_path : cpl_paths) {
         auto doc = xmlReadFile(cpl_path.c_str(), nullptr,

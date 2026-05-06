@@ -15,6 +15,16 @@ pkg_check_modules(LIBXML2 REQUIRED IMPORTED_TARGET libxml-2.0)
 pkg_check_modules(OPENSSL REQUIRED IMPORTED_TARGET openssl)
 pkg_check_modules(XERCES REQUIRED IMPORTED_TARGET xerces-c)
 
+# CLI11 (header-only)
+add_subdirectory(extern/CLI11 EXCLUDE_FROM_ALL)
+
+# spdlog
+add_subdirectory(extern/spdlog EXCLUDE_FROM_ALL)
+
+# asdcplib
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/asdcplib EXCLUDE_FROM_ALL)
+
 # Core library
 add_library(dcpdoctor_core STATIC
     src/dcp.cpp
@@ -34,15 +44,18 @@ add_library(dcpdoctor_core STATIC
     src/note.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
-    ${CMAKE_SOURCE_DIR}/include)
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/extern/asdcplib/src)
 target_link_libraries(dcpdoctor_core PUBLIC
     PkgConfig::LIBXML2
     PkgConfig::OPENSSL
-    PkgConfig::XERCES)
+    PkgConfig::XERCES
+    spdlog::spdlog
+    libasdcp)
 
 # CLI tool
 add_executable(dcpdoctor src/main.cpp)
-target_link_libraries(dcpdoctor PRIVATE dcpdoctor_core)
+target_link_libraries(dcpdoctor PRIVATE dcpdoctor_core CLI11::CLI11)
 
 # Tests
 option(BUILD_TESTING "Build tests" ON)

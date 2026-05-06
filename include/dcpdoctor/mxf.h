@@ -7,7 +7,7 @@
 
 namespace dcpdoctor {
 
-enum class EssenceType { unknown, jpeg2000, mpeg2, pcm_audio, timed_text };
+enum class EssenceType { unknown, jpeg2000, mpeg2, pcm_audio, timed_text, dolby_atmos };
 
 struct PictureDescriptor {
     uint32_t width = 0;
