@@ -10,11 +10,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Dependencies
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBXML2 REQUIRED IMPORTED_TARGET libxml-2.0)
-pkg_check_modules(OPENSSL REQUIRED IMPORTED_TARGET openssl)
-pkg_check_modules(XERCES REQUIRED IMPORTED_TARGET xerces-c)
-pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+if(WIN32)
+    # Windows: use find_package (vcpkg provides these)
+    find_package(LibXml2 REQUIRED)
+    find_package(OpenSSL REQUIRED)
+    find_package(XercesC REQUIRED)
+    find_package(unofficial-sqlite3 CONFIG QUIET)
+    if(NOT unofficial-sqlite3_FOUND)
+        find_package(SQLite3 REQUIRED)
+    endif()
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBXML2 REQUIRED IMPORTED_TARGET libxml-2.0)
+    pkg_check_modules(OPENSSL REQUIRED IMPORTED_TARGET openssl)
+    pkg_check_modules(XERCES REQUIRED IMPORTED_TARGET xerces-c)
+    pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+endif()
 
 # CLI11 (header-only)
 add_subdirectory(extern/CLI11 EXCLUDE_FROM_ALL)
@@ -65,13 +76,24 @@ add_library(dcpdoctor_core STATIC
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/extern/asdcplib/src)
-target_link_libraries(dcpdoctor_core PUBLIC
-    PkgConfig::LIBXML2
-    PkgConfig::OPENSSL
-    PkgConfig::XERCES
-    PkgConfig::SQLITE3
-    spdlog::spdlog
-    libasdcp)
+
+if(WIN32)
+    target_link_libraries(dcpdoctor_core PUBLIC
+        LibXml2::LibXml2
+        OpenSSL::SSL OpenSSL::Crypto
+        XercesC::XercesC
+        $<IF:$<TARGET_EXISTS:unofficial::sqlite3::sqlite3>,unofficial::sqlite3::sqlite3,SQLite::SQLite3>
+        spdlog::spdlog
+        libasdcp)
+else()
+    target_link_libraries(dcpdoctor_core PUBLIC
+        PkgConfig::LIBXML2
+        PkgConfig::OPENSSL
+        PkgConfig::XERCES
+        PkgConfig::SQLITE3
+        spdlog::spdlog
+        libasdcp)
+endif()
 
 # CLI tool
 add_executable(dcpdoctor src/main.cpp)
