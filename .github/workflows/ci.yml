@@ -63,6 +63,7 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DBUILD_TESTING=ON
 
       - name: Configure (macOS)
@@ -70,6 +71,7 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DBUILD_TESTING=ON \
             -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
             -DCMAKE_PREFIX_PATH="$(brew --prefix libxml2);$(brew --prefix xerces-c)"
@@ -79,6 +81,7 @@ jobs:
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
             -DBUILD_TESTING=ON `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
