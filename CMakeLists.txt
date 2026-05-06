@@ -59,7 +59,8 @@ add_library(dcpdoctor_core STATIC
     src/imf.cpp
     src/quality.cpp
     src/photon.cpp
-    src/premium.cpp)
+    src/premium.cpp
+    src/studio.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include

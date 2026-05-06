@@ -5,6 +5,7 @@
 #include "dcpdoctor/kdm.h"
 #include "dcpdoctor/photon.h"
 #include "dcpdoctor/premium.h"
+#include "dcpdoctor/studio.h"
 #include "dcpdoctor/report.h"
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/theater.h"
@@ -100,6 +101,8 @@ int main(int argc, char* argv[]) {
     bool accessibility_check = false;
     bool hdr_check = false;
     bool atmos_deep = false;
+    bool studio_mode = false;
+    bool deep_mode = false;
     std::string photon_dir_opt;
     validate_cmd->add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
     validate_cmd->add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
@@ -107,6 +110,8 @@ int main(int argc, char* argv[]) {
     validate_cmd->add_flag("--accessibility", accessibility_check, "Check accessibility tracks (AD/HI/CC)");
     validate_cmd->add_flag("--hdr", hdr_check, "Detect and validate HDR metadata");
     validate_cmd->add_flag("--atmos", atmos_deep, "Deep Dolby Atmos IAB inspection");
+    validate_cmd->add_flag("--studio", studio_mode, "Run studio-level checks (loudness, color, resolution, encryption)");
+    validate_cmd->add_flag("--deep", deep_mode, "Deep per-MXF analysis (color, loudness, resolution)");
     validate_cmd->add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
     app.add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
     app.add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
@@ -114,6 +119,8 @@ int main(int argc, char* argv[]) {
     app.add_flag("--accessibility", accessibility_check, "Check accessibility tracks (AD/HI/CC)");
     app.add_flag("--hdr", hdr_check, "Detect and validate HDR metadata");
     app.add_flag("--atmos", atmos_deep, "Deep Dolby Atmos IAB inspection");
+    app.add_flag("--studio", studio_mode, "Run studio-level checks (loudness, color, resolution, encryption)");
+    app.add_flag("--deep", deep_mode, "Deep per-MXF analysis (color, loudness, resolution)");
     app.add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
 
     // Also allow validate args on the main app for backward compat
@@ -332,6 +339,13 @@ int main(int argc, char* argv[]) {
                         result.add(std::move(note));
                 }
             }
+        }
+
+        // Studio-level checks (loudness, color, resolution, encryption, etc.)
+        if (studio_mode) {
+            auto studio_notes = dcpdoctor::run_studio_checks(dir, deep_mode);
+            for (auto& note : studio_notes)
+                result.add(std::move(note));
         }
 
         if (!result.ok())
