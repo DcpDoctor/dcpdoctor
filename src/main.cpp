@@ -4,6 +4,7 @@
 #include "dcpdoctor/fixes.h"
 #include "dcpdoctor/kdm.h"
 #include "dcpdoctor/photon.h"
+#include "dcpdoctor/premium.h"
 #include "dcpdoctor/report.h"
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/theater.h"
@@ -95,12 +96,24 @@ int main(int argc, char* argv[]) {
     // Additional validate flags
     bool suggest_fixes_flag = false;
     bool imf_mode = false;
+    bool netflix_mode = false;
+    bool accessibility_check = false;
+    bool hdr_check = false;
+    bool atmos_deep = false;
     std::string photon_dir_opt;
     validate_cmd->add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
     validate_cmd->add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
+    validate_cmd->add_flag("--netflix", netflix_mode, "Check Netflix IMF delivery specs");
+    validate_cmd->add_flag("--accessibility", accessibility_check, "Check accessibility tracks (AD/HI/CC)");
+    validate_cmd->add_flag("--hdr", hdr_check, "Detect and validate HDR metadata");
+    validate_cmd->add_flag("--atmos", atmos_deep, "Deep Dolby Atmos IAB inspection");
     validate_cmd->add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
     app.add_flag("--fix", suggest_fixes_flag, "Show fix suggestions for detected issues");
     app.add_flag("--imf", imf_mode, "Validate as IMF package (uses Netflix Photon)");
+    app.add_flag("--netflix", netflix_mode, "Check Netflix IMF delivery specs");
+    app.add_flag("--accessibility", accessibility_check, "Check accessibility tracks (AD/HI/CC)");
+    app.add_flag("--hdr", hdr_check, "Detect and validate HDR metadata");
+    app.add_flag("--atmos", atmos_deep, "Deep Dolby Atmos IAB inspection");
     app.add_option("--photon-dir", photon_dir_opt, "Path to Photon source directory");
 
     // Also allow validate args on the main app for backward compat
@@ -273,6 +286,52 @@ int main(int argc, char* argv[]) {
             auto photon_notes = dcpdoctor::photon_to_notes(photon_result, dir);
             for (auto& note : photon_notes)
                 result.add(std::move(note));
+        }
+
+        // Netflix delivery spec
+        if (netflix_mode) {
+            auto netflix_result = dcpdoctor::check_netflix_delivery(dir);
+            auto netflix_notes = dcpdoctor::netflix_to_notes(netflix_result, dir);
+            for (auto& note : netflix_notes)
+                result.add(std::move(note));
+        }
+
+        // Accessibility tracks
+        if (accessibility_check) {
+            auto acc_notes = dcpdoctor::check_accessibility(dir);
+            for (auto& note : acc_notes)
+                result.add(std::move(note));
+        }
+
+        // HDR metadata detection
+        if (hdr_check) {
+            std::error_code ec2;
+            for (auto& mxf_entry : fs::directory_iterator(dir, ec2)) {
+                if (!mxf_entry.is_regular_file()) continue;
+                if (mxf_entry.path().extension() != ".mxf") continue;
+                auto hdr_info = dcpdoctor::detect_hdr_metadata(mxf_entry.path());
+                if (hdr_info.detected) {
+                    auto hdr_notes = dcpdoctor::check_hdr_compliance(hdr_info, mxf_entry.path());
+                    for (auto& note : hdr_notes)
+                        result.add(std::move(note));
+                    break;  // Only check first picture MXF
+                }
+            }
+        }
+
+        // Deep Atmos IAB inspection
+        if (atmos_deep) {
+            std::error_code ec2;
+            for (auto& mxf_entry : fs::directory_iterator(dir, ec2)) {
+                if (!mxf_entry.is_regular_file()) continue;
+                if (mxf_entry.path().extension() != ".mxf") continue;
+                auto atmos_info = dcpdoctor::parse_atmos_iab(mxf_entry.path());
+                if (atmos_info.detected) {
+                    auto atmos_notes = dcpdoctor::check_atmos_compliance(atmos_info, mxf_entry.path());
+                    for (auto& note : atmos_notes)
+                        result.add(std::move(note));
+                }
+            }
         }
 
         if (!result.ok())

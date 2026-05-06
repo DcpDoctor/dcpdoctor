@@ -58,7 +58,8 @@ add_library(dcpdoctor_core STATIC
     src/hfr_stereo.cpp
     src/imf.cpp
     src/quality.cpp
-    src/photon.cpp)
+    src/photon.cpp
+    src/premium.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include
