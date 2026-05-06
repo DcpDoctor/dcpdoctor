@@ -4,20 +4,29 @@
 #include "dcpdoctor/subtitle.h"
 #include "dcpdoctor/validators.h"
 #include "dcpdoctor/mxf.h"
+#include "dcpdoctor/advanced.h"
+#include "dcpdoctor/bitrate.h"
+#include "dcpdoctor/audio.h"
+#include "dcpdoctor/timeline.h"
 #include <cassert>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
 static int tests_run = 0;
 static int tests_passed = 0;
 
+using TestFunc = void(*)();
+static TestFunc test_registry[256];
+static int test_count = 0;
+
 #define TEST(name) \
     static void test_##name(); \
-    struct test_reg_##name { test_reg_##name() { test_##name(); } } test_inst_##name; \
+    static struct test_reg_##name { test_reg_##name() { test_registry[test_count++] = test_##name; } } test_inst_##name; \
     static void test_##name()
 
 #define ASSERT(cond) do { \
@@ -380,7 +389,280 @@ TEST(code_str_coverage) {
     ASSERT(n.code_str() == "supplemental_opl_missing");
 }
 
+// === Advanced Feature Tests ===
+
+TEST(bv21_nonexistent_dir) {
+    auto notes = dcpdoctor::check_bv21_compliance("/tmp/nonexistent_bv21_test",
+                                                   dcpdoctor::Standard::smpte);
+    // Should produce notes about missing files or fail gracefully
+    ASSERT(notes.empty() || notes[0].severity != dcpdoctor::Severity::error ||
+           notes[0].code == dcpdoctor::Code::smpte_naming_violation ||
+           notes[0].code == dcpdoctor::Code::missing_required_element);
+}
+
+TEST(bv21_interop_warning) {
+    // BV2.1 requires SMPTE - interop should generate a warning/error
+    auto notes = dcpdoctor::check_bv21_compliance("/tmp/nonexistent_bv21_test",
+                                                   dcpdoctor::Standard::interop);
+    bool found_namespace_issue = false;
+    for (auto& n : notes) {
+        if (n.code == dcpdoctor::Code::smpte_namespace_wrong)
+            found_namespace_issue = true;
+    }
+    ASSERT(found_namespace_issue);
+}
+
+TEST(manifest_nonexistent_file) {
+    auto notes = dcpdoctor::compare_manifest("/tmp/nonexistent_dcp",
+                                             "/tmp/nonexistent_manifest.json");
+    ASSERT(!notes.empty());
+    // Should report file not found
+    bool found_error = false;
+    for (auto& n : notes) {
+        if (n.severity == dcpdoctor::Severity::error)
+            found_error = true;
+    }
+    ASSERT(found_error);
+}
+
+TEST(batch_summary_output) {
+    std::vector<dcpdoctor::BatchResult> results;
+    results.push_back({"/tmp/dcp1", true, 0, 1, dcpdoctor::Standard::smpte});
+    results.push_back({"/tmp/dcp2", false, 3, 2, dcpdoctor::Standard::interop});
+    results.push_back({"/tmp/dcp3", true, 0, 0, dcpdoctor::Standard::smpte});
+
+    std::ostringstream out;
+    dcpdoctor::write_batch_summary(out, results);
+    std::string output = out.str();
+
+    // Should contain header
+    ASSERT(output.find("Batch Summary") != std::string::npos);
+    // Should contain pass/fail counts
+    ASSERT(output.find("Passed: 2") != std::string::npos);
+    ASSERT(output.find("Failed: 1") != std::string::npos);
+    // Should list individual DCPs
+    ASSERT(output.find("dcp1") != std::string::npos);
+    ASSERT(output.find("dcp2") != std::string::npos);
+    ASSERT(output.find("PASS") != std::string::npos);
+    ASSERT(output.find("FAIL") != std::string::npos);
+}
+
+TEST(bitrate_stats_default) {
+    dcpdoctor::FrameBitrateStats stats;
+    ASSERT(!stats.valid);
+    ASSERT(stats.frame_count == 0);
+    ASSERT(stats.avg_bitrate_mbps == 0.0);
+    ASSERT(stats.max_bitrate_mbps == 0.0);
+}
+
+TEST(bitrate_compliance_under_limit) {
+    dcpdoctor::FrameBitrateStats stats;
+    stats.valid = true;
+    stats.frame_count = 100;
+    stats.max_bitrate_mbps = 200.0;  // Under 250 Mbps DCI limit
+    stats.avg_bitrate_mbps = 150.0;
+    stats.frame_rate = 24.0;
+
+    auto notes = dcpdoctor::check_bitrate_compliance(stats, "/test.mxf");
+    // Under limit - no error notes expected
+    bool has_bitrate_error = false;
+    for (auto& n : notes) {
+        if (n.code == dcpdoctor::Code::j2k_bitrate_exceeded &&
+            n.severity == dcpdoctor::Severity::error)
+            has_bitrate_error = true;
+    }
+    ASSERT(!has_bitrate_error);
+}
+
+TEST(bitrate_compliance_over_limit) {
+    dcpdoctor::FrameBitrateStats stats;
+    stats.valid = true;
+    stats.frame_count = 100;
+    stats.max_bitrate_mbps = 300.0;  // Over 250 Mbps for 2K
+    stats.avg_bitrate_mbps = 260.0;
+    stats.frame_rate = 24.0;
+    stats.width = 2048;
+    stats.height = 1080;
+
+    auto notes = dcpdoctor::check_bitrate_compliance(stats, "/test.mxf");
+    bool has_bitrate_error = false;
+    for (auto& n : notes) {
+        if (n.code == dcpdoctor::Code::j2k_bitrate_exceeded)
+            has_bitrate_error = true;
+    }
+    ASSERT(has_bitrate_error);
+}
+
+TEST(j2k_deep_info_default) {
+    dcpdoctor::J2kDeepInfo info;
+    ASSERT(!info.valid);
+    ASSERT(info.rsiz == 0);
+    ASSERT(info.num_components == 0);
+    ASSERT(info.bit_depth == 0);
+}
+
+TEST(j2k_deep_compliance_valid_dci) {
+    dcpdoctor::J2kDeepInfo info;
+    info.valid = true;
+    info.rsiz = 3;  // Cinema 2K
+    info.num_components = 3;
+    info.bit_depth = 12;
+    info.num_decomp_levels = 5;
+    info.code_block_width = 5;  // 32
+    info.code_block_height = 5;  // 32
+    info.num_quality_layers = 1;
+    info.irreversible = true;
+
+    auto notes = dcpdoctor::check_j2k_deep_compliance(info, "/test.mxf");
+    // Valid DCI params should produce no errors
+    bool has_error = false;
+    for (auto& n : notes) {
+        if (n.severity == dcpdoctor::Severity::error)
+            has_error = true;
+    }
+    ASSERT(!has_error);
+}
+
+TEST(j2k_deep_compliance_bad_components) {
+    dcpdoctor::J2kDeepInfo info;
+    info.valid = true;
+    info.rsiz = 3;
+    info.num_components = 1;  // Should be 3 for DCI
+    info.bit_depth = 12;
+    info.num_decomp_levels = 5;
+    info.code_block_width = 5;
+    info.code_block_height = 5;
+    info.irreversible = true;
+
+    auto notes = dcpdoctor::check_j2k_deep_compliance(info, "/test.mxf");
+    bool found_component_error = false;
+    for (auto& n : notes) {
+        if (n.code == dcpdoctor::Code::j2k_invalid_component_count)
+            found_component_error = true;
+    }
+    ASSERT(found_component_error);
+}
+
+TEST(audio_stats_default) {
+    dcpdoctor::AudioLevelStats stats;
+    ASSERT(!stats.valid);
+    ASSERT(stats.channels == 0);
+    ASSERT(stats.overall_peak_dbfs == -200.0);
+}
+
+TEST(audio_level_check_clipping) {
+    dcpdoctor::AudioLevelStats stats;
+    stats.valid = true;
+    stats.channels = 6;
+    stats.sample_rate = 48000;
+    stats.bit_depth = 24;
+    stats.peak_dbfs = {-0.05, -3.0, -6.0, -10.0, -20.0, -30.0};  // Channel 0 clipping
+    stats.rms_dbfs = {-6.0, -12.0, -15.0, -20.0, -30.0, -40.0};
+    stats.overall_peak_dbfs = -0.05;  // Near 0 dBFS
+
+    auto notes = dcpdoctor::check_audio_levels(stats, "/test.mxf");
+    bool found_clipping = false;
+    for (auto& n : notes) {
+        if (n.message.find("clip") != std::string::npos ||
+            n.message.find("peak") != std::string::npos)
+            found_clipping = true;
+    }
+    ASSERT(found_clipping);
+}
+
+TEST(audio_level_check_silence) {
+    dcpdoctor::AudioLevelStats stats;
+    stats.valid = true;
+    stats.channels = 2;
+    stats.sample_rate = 48000;
+    stats.bit_depth = 24;
+    stats.peak_dbfs = {-90.0, -90.0};  // Near silence
+    stats.rms_dbfs = {-95.0, -95.0};
+    stats.overall_peak_dbfs = -90.0;
+    stats.overall_rms_dbfs = -95.0;
+
+    auto notes = dcpdoctor::check_audio_levels(stats, "/test.mxf");
+    bool found_silence = false;
+    for (auto& n : notes) {
+        if (n.message.find("silen") != std::string::npos ||
+            n.message.find("quiet") != std::string::npos)
+            found_silence = true;
+    }
+    ASSERT(found_silence);
+}
+
+TEST(timeline_reel_defaults) {
+    dcpdoctor::TimelineReel reel;
+    ASSERT(reel.picture_entry == 0);
+    ASSERT(reel.picture_duration == 0);
+    ASSERT(!reel.has_picture);
+    ASSERT(!reel.has_sound);
+    ASSERT(!reel.has_subtitle);
+}
+
+TEST(timeline_svg_generation) {
+    std::vector<dcpdoctor::TimelineReel> reels;
+
+    dcpdoctor::TimelineReel r1;
+    r1.id = "reel-1";
+    r1.picture_entry = 0;
+    r1.picture_duration = 24 * 60;  // 1 minute at 24fps
+    r1.has_picture = true;
+    r1.sound_entry = 0;
+    r1.sound_duration = 24 * 60;
+    r1.has_sound = true;
+    reels.push_back(r1);
+
+    dcpdoctor::TimelineReel r2;
+    r2.id = "reel-2";
+    r2.picture_entry = 24 * 60;
+    r2.picture_duration = 24 * 120;  // 2 minutes
+    r2.has_picture = true;
+    r2.has_sound = true;
+    r2.sound_entry = 24 * 60;
+    r2.sound_duration = 24 * 120;
+    reels.push_back(r2);
+
+    std::ostringstream out;
+    dcpdoctor::write_timeline_svg(out, reels, "Test DCP", 24.0);
+    std::string svg = out.str();
+
+    // Should be valid SVG
+    ASSERT(svg.find("<svg") != std::string::npos);
+    ASSERT(svg.find("</svg>") != std::string::npos);
+    // Should contain title
+    ASSERT(svg.find("Test DCP") != std::string::npos);
+    // Should contain track labels
+    ASSERT(svg.find("Picture") != std::string::npos);
+    ASSERT(svg.find("Sound") != std::string::npos);
+}
+
+TEST(timeline_extract_nonexistent) {
+    auto reels = dcpdoctor::extract_timeline("/tmp/nonexistent_cpl.xml");
+    ASSERT(reels.empty());
+}
+
+TEST(bitrate_analyze_nonexistent) {
+    auto stats = dcpdoctor::analyze_picture_bitrate("/tmp/nonexistent_mxf_file.mxf");
+    ASSERT(!stats.valid);
+    ASSERT(!stats.error.empty());
+}
+
+TEST(audio_analyze_nonexistent) {
+    auto stats = dcpdoctor::analyze_audio_levels("/tmp/nonexistent_audio.mxf");
+    ASSERT(!stats.valid);
+    ASSERT(!stats.error.empty());
+}
+
+TEST(j2k_deep_validate_nonexistent) {
+    auto info = dcpdoctor::deep_validate_j2k("/tmp/nonexistent_j2k.mxf");
+    ASSERT(!info.valid);
+    ASSERT(!info.error.empty());
+}
+
 int main() {
+    for (int i = 0; i < test_count; ++i)
+        test_registry[i]();
     std::cout << tests_passed << "/" << tests_run << " tests passed\n";
     return (tests_passed == tests_run) ? 0 : 1;
 }

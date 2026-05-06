@@ -34,6 +34,8 @@ add_library(dcpdoctor_core STATIC
     src/hash.cpp
     src/mxf.cpp
     src/j2k.cpp
+    src/bitrate.cpp
+    src/audio.cpp
     src/subtitle.cpp
     src/isdcf.cpp
     src/validators.cpp
@@ -41,7 +43,10 @@ add_library(dcpdoctor_core STATIC
     src/schema_validator.cpp
     src/signature.cpp
     src/report.cpp
-    src/note.cpp)
+    src/note.cpp
+    src/timeline.cpp
+    src/advanced.cpp
+    src/server.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include

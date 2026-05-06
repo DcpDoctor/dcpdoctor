@@ -1,8 +1,35 @@
 #include "dcpdoctor/report.h"
+#include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <ostream>
+#include <unistd.h>
 
 namespace dcpdoctor {
+
+// ANSI color codes
+namespace color {
+static bool enabled = false;
+
+static void detect() {
+    enabled = isatty(STDOUT_FILENO) != 0;
+    // Also respect NO_COLOR env var
+    if (const char* nc = getenv("NO_COLOR"); nc && nc[0])
+        enabled = false;
+}
+
+static const char* reset()   { return enabled ? "\033[0m"    : ""; }
+static const char* bold()    { return enabled ? "\033[1m"    : ""; }
+static const char* red()     { return enabled ? "\033[31m"   : ""; }
+static const char* green()   { return enabled ? "\033[32m"   : ""; }
+static const char* yellow()  { return enabled ? "\033[33m"   : ""; }
+static const char* blue()    { return enabled ? "\033[34m"   : ""; }
+static const char* cyan()    { return enabled ? "\033[36m"   : ""; }
+static const char* dim()     { return enabled ? "\033[2m"    : ""; }
+static const char* bold_red()    { return enabled ? "\033[1;31m" : ""; }
+static const char* bold_green()  { return enabled ? "\033[1;32m" : ""; }
+static const char* bold_yellow() { return enabled ? "\033[1;33m" : ""; }
+} // namespace color
 
 static std::string html_escape(const std::string& s) {
     std::string out;
@@ -21,23 +48,41 @@ static std::string html_escape(const std::string& s) {
 
 static void write_text(const VerifyResult& result, const std::filesystem::path& dcp_dir,
                        std::ostream& out) {
-    out << "DCP Verification Report\n";
+    color::detect();
+
+    out << color::bold() << "DCP Verification Report" << color::reset() << "\n";
     out << "=======================\n";
-    out << "Path: " << dcp_dir.string() << "\n";
-    out << "Standard: " << (result.standard == Standard::smpte ? "SMPTE" :
-                            result.standard == Standard::interop ? "Interop" : "Unknown") << "\n";
-    out << "Result: " << (result.ok() ? "PASS" : "FAIL") << "\n";
-    out << "Errors: " << result.error_count << "  Warnings: " << result.warning_count << "\n\n";
+    out << "Path: " << color::cyan() << dcp_dir.string() << color::reset() << "\n";
+    out << "Standard: " << color::bold()
+        << (result.standard == Standard::smpte ? "SMPTE" :
+            result.standard == Standard::interop ? "Interop" : "Unknown")
+        << color::reset() << "\n";
+
+    if (result.ok()) {
+        out << "Result: " << color::bold_green() << "PASS" << color::reset() << "\n";
+    } else {
+        out << "Result: " << color::bold_red() << "FAIL" << color::reset() << "\n";
+    }
+
+    out << "Errors: " << color::red() << result.error_count << color::reset()
+        << "  Warnings: " << color::yellow() << result.warning_count << color::reset() << "\n\n";
 
     if (result.notes.empty()) {
-        out << "No issues found.\n";
+        out << color::green() << "No issues found." << color::reset() << "\n";
         return;
     }
 
     for (const auto& note : result.notes) {
-        out << std::format("[{}] {} - {}", note.severity_str(), note.code_str(), note.message);
+        const char* sev_color = "";
+        if (note.severity == Severity::error) sev_color = color::bold_red();
+        else if (note.severity == Severity::warning) sev_color = color::bold_yellow();
+        else sev_color = color::blue();
+
+        out << sev_color << "[" << note.severity_str() << "]" << color::reset()
+            << " " << color::dim() << note.code_str() << color::reset()
+            << " - " << note.message;
         if (!note.file.empty())
-            out << " (" << note.file.filename().string() << ")";
+            out << " " << color::dim() << "(" << note.file.filename().string() << ")" << color::reset();
         out << "\n";
     }
 }
@@ -171,6 +216,39 @@ void write_report(const VerifyResult& result, const std::filesystem::path& dcp_d
         write_html(result, dcp_dir, out);
         break;
     }
+}
+
+// === ProgressBar implementation ===
+
+ProgressBar::ProgressBar(int total, const std::string& label)
+    : total_(total), label_(label), is_tty_(isatty(STDERR_FILENO) != 0) {
+    if (const char* nc = getenv("NO_COLOR"); nc && nc[0])
+        is_tty_ = false;
+}
+
+void ProgressBar::update(int current) {
+    if (!is_tty_ || total_ <= 0) return;
+
+    int pct = (current * 100) / total_;
+    if (pct == last_pct_) return;
+    last_pct_ = pct;
+
+    const int bar_width = 30;
+    int filled = (pct * bar_width) / 100;
+
+    std::string bar(filled, '#');
+    bar += std::string(bar_width - filled, '-');
+
+    fprintf(stderr, "\r\033[K%s[%s] %3d%% (%d/%d)",
+            label_.empty() ? "" : (label_ + " ").c_str(),
+            bar.c_str(), pct, current, total_);
+    fflush(stderr);
+}
+
+void ProgressBar::finish() {
+    if (!is_tty_) return;
+    fprintf(stderr, "\r\033[K");  // Clear the line
+    fflush(stderr);
 }
 
 } // namespace dcpdoctor
