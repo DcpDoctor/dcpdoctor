@@ -68,6 +68,16 @@ DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standa
 - **Checksum verification** — Verify all PKL asset hashes and sizes (DCP or IMF)
 - **MXF essence extraction** — Extract video/audio tracks from MXF containers
 - **Automated QC** — Detect black frames, freeze frames, audio silence, and audio clipping
+- **IMP validation** — Validate IMF packages via Netflix Photon
+- **Schema validation** — XML schema validation against SMPTE ST 2067 XSDs
+- **IMF compliance** — Platform-specific compliance checks (Netflix, Disney, Amazon, Apple, Cinema, Broadcast)
+- **Frame-level QC** — Per-frame J2K bitrate analysis with over/under-budget detection
+- **QC reports** — Detailed HTML/PDF QC reports with thumbnails, waveforms, loudness, bitrate charts
+- **Loudness measurement** — EBU R128 / ATSC A/85 loudness measurement and normalization
+- **AV sync detection** — Audio/video sync drift detection and measurement
+- **HDR validation** — HDR10, HLG, Dolby Vision metadata validation
+- **Frame comparison** — Frame-by-frame PSNR/SSIM/VMAF comparison between IMPs or files
+- **IMP info** — Display IMP package structure, tracks, and metadata
 - **Theater compatibility profiles** — Pre-built profiles for major server vendors:
   - Dolby IMS3000, IMS2000, Cinema (Premium)
   - Barco SP4K, SP2K
@@ -313,6 +323,91 @@ dcpdoctor auto-qc --video /path/to/content.mxf \
   --freeze-threshold 0.005 \
   --silence-threshold -50 \
   --clipping-threshold -1.0
+```
+
+### IMP Validation
+
+```bash
+# Validate an IMF package via Netflix Photon
+dcpdoctor validate-imp /path/to/IMP/
+
+# Schema validation against SMPTE XSDs
+dcpdoctor schema-validate /path/to/IMP/
+dcpdoctor schema-validate /path/to/IMP/ --schema-dir /path/to/xsd/
+```
+
+### IMF Compliance
+
+```bash
+# Check Netflix delivery compliance
+dcpdoctor imf-compliance /path/to/IMP/ --target netflix
+
+# Check Cinema 4K compliance (non-strict)
+dcpdoctor imf-compliance /path/to/IMP/ --target cinema4k --no-strict
+```
+
+### Frame-Level QC
+
+```bash
+# Analyze J2K bitrate compliance
+dcpdoctor frame-qc /path/to/j2k/frames/ --max-bitrate 300 --min-bitrate 50
+```
+
+### QC Report
+
+```bash
+# Generate detailed HTML report
+dcpdoctor qc-report /path/to/IMP/ -o report.html --title "Feature Film QC"
+
+# PDF report with client name
+dcpdoctor qc-report /path/to/IMP/ -o report.pdf --client "Studio A"
+```
+
+### Loudness
+
+```bash
+# Measure EBU R128 loudness
+dcpdoctor loudness /path/to/audio.wav
+
+# Normalize to -23 LUFS
+dcpdoctor loudness /path/to/audio.wav -o normalized.wav --normalize --target -23
+```
+
+### AV Sync
+
+```bash
+# Check sync between video and audio
+dcpdoctor av-sync -v /path/to/video.mxf -a /path/to/audio.wav --fps-num 24
+```
+
+### HDR Validation
+
+```bash
+# Validate HDR10 metadata
+dcpdoctor hdr-validate /path/to/video.mxf -s hdr10
+
+# Validate with expected values
+dcpdoctor hdr-validate /path/to/video.mxf -s hdr10 --max-cll 1000 --max-fall 400
+```
+
+### Frame Comparison
+
+```bash
+# Compare two IMPs
+dcpdoctor frame-compare --imp-a /path/to/IMP_v1/ --imp-b /path/to/IMP_v2/
+
+# Compare two files with VMAF and HTML report
+dcpdoctor frame-compare --file-a ref.mxf --file-b test.mxf --vmaf --html -o results/
+
+# Extract diff images
+dcpdoctor frame-compare --file-a ref.mp4 --file-b test.mp4 --extract-diffs -o diffs/
+```
+
+### IMP Info
+
+```bash
+# Display IMP package details
+dcpdoctor imp-info /path/to/IMP/
 ```
 
 ## Exit Codes

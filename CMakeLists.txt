@@ -74,7 +74,17 @@ add_library(dcpdoctor_core STATIC
     src/studio.cpp
     src/checksum_verify.cpp
     src/mxf_extract.cpp
-    src/auto_qc.cpp)
+    src/auto_qc.cpp
+    src/validate.cpp
+    src/schema_validate.cpp
+    src/imf_compliance.cpp
+    src/qc.cpp
+    src/qc_report.cpp
+    src/loudness.cpp
+    src/av_sync.cpp
+    src/hdr_validate.cpp
+    src/frame_compare.cpp
+    src/info.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include

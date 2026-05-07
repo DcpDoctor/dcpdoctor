@@ -1,18 +1,28 @@
 #include "dcpdoctor/dcpdoctor.h"
 #include "dcpdoctor/advanced.h"
 #include "dcpdoctor/auto_qc.h"
+#include "dcpdoctor/av_sync.h"
 #include "dcpdoctor/checksum_verify.h"
 #include "dcpdoctor/diff.h"
 #include "dcpdoctor/fixes.h"
+#include "dcpdoctor/frame_compare.h"
+#include "dcpdoctor/hdr_validate.h"
+#include "dcpdoctor/imf_compliance.h"
+#include "dcpdoctor/info.h"
 #include "dcpdoctor/kdm.h"
+#include "dcpdoctor/loudness.h"
 #include "dcpdoctor/mxf_extract.h"
 #include "dcpdoctor/photon.h"
 #include "dcpdoctor/premium.h"
+#include "dcpdoctor/qc.h"
+#include "dcpdoctor/qc_report.h"
+#include "dcpdoctor/schema_validate.h"
 #include "dcpdoctor/studio.h"
 #include "dcpdoctor/report.h"
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/theater.h"
 #include "dcpdoctor/timeline.h"
+#include "dcpdoctor/validate.h"
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
 #include <libxml/parser.h>
@@ -148,6 +158,110 @@ int main(int argc, char* argv[])
   auto_qc_cmd->add_option("--freeze-threshold", qc_freeze_thresh, "Freeze noise threshold")->default_val(0.003);
   auto_qc_cmd->add_option("--silence-threshold", qc_silence_thresh, "Silence dB threshold")->default_val(-60.0);
   auto_qc_cmd->add_option("--clipping-threshold", qc_clip_thresh, "Clipping dBFS threshold")->default_val(-0.5);
+
+  // === VALIDATE-IMP subcommand ===
+  auto* validate_imp_cmd = app.add_subcommand("validate-imp", "Validate IMP via Netflix Photon");
+  std::string vimp_dir;
+  validate_imp_cmd->add_option("imp_dir", vimp_dir, "IMP directory")->required()->check(CLI::ExistingDirectory);
+
+  // === SCHEMA-VALIDATE subcommand ===
+  auto* schema_val_cmd = app.add_subcommand("schema-validate", "XML schema validation against SMPTE XSDs");
+  std::string sv_imp_dir, sv_schema_dir;
+  bool sv_cpl = true, sv_pkl = true, sv_assetmap = true;
+  schema_val_cmd->add_option("imp_dir", sv_imp_dir, "IMP directory")->required()->check(CLI::ExistingDirectory);
+  schema_val_cmd->add_option("--schema-dir", sv_schema_dir, "Directory containing XSD files");
+  schema_val_cmd->add_flag("--no-cpl", [&](auto) { sv_cpl = false; }, "Skip CPL validation");
+  schema_val_cmd->add_flag("--no-pkl", [&](auto) { sv_pkl = false; }, "Skip PKL validation");
+  schema_val_cmd->add_flag("--no-assetmap", [&](auto) { sv_assetmap = false; }, "Skip ASSETMAP validation");
+
+  // === IMF-COMPLIANCE subcommand ===
+  auto* imfcomp_cmd = app.add_subcommand("imf-compliance", "Platform-specific IMF compliance checks");
+  std::string imfcomp_dir, imfcomp_target;
+  bool imfcomp_strict = true;
+  imfcomp_cmd->add_option("imp_dir", imfcomp_dir, "IMP directory")->required()->check(CLI::ExistingDirectory);
+  imfcomp_cmd->add_option("-t,--target", imfcomp_target, "Target platform")->required()
+      ->check(CLI::IsMember({"netflix", "disney", "amazon", "apple", "cinema2k", "cinema4k", "broadcast-hd", "broadcast-uhd"}));
+  imfcomp_cmd->add_flag("--no-strict", [&](auto) { imfcomp_strict = false; }, "Allow warnings to pass");
+
+  // === FRAME-QC subcommand ===
+  auto* frameqc_cmd = app.add_subcommand("frame-qc", "Frame-level bitrate QC analysis");
+  std::string fqc_dir;
+  double fqc_max_br = 300.0, fqc_min_br = 50.0, fqc_target_br = 250.0;
+  frameqc_cmd->add_option("j2k_dir", fqc_dir, "J2K codestream directory")->required()->check(CLI::ExistingDirectory);
+  frameqc_cmd->add_option("--target-bitrate", fqc_target_br, "Target bitrate Mbps")->default_val(250.0);
+  frameqc_cmd->add_option("--max-bitrate", fqc_max_br, "Max bitrate Mbps")->default_val(300.0);
+  frameqc_cmd->add_option("--min-bitrate", fqc_min_br, "Min bitrate Mbps")->default_val(50.0);
+
+  // === QC-REPORT subcommand ===
+  auto* qcreport_cmd = app.add_subcommand("qc-report", "Generate detailed QC report (HTML/PDF)");
+  std::string qcr_imp_dir, qcr_output, qcr_title, qcr_client;
+  bool qcr_thumbnails = true, qcr_waveform = true, qcr_loudness = true, qcr_bitrate = true;
+  uint32_t qcr_thumb_count = 12;
+  qcreport_cmd->add_option("imp_dir", qcr_imp_dir, "IMP directory")->required()->check(CLI::ExistingDirectory);
+  qcreport_cmd->add_option("-o,--output", qcr_output, "Output file (.html or .pdf)")->required();
+  qcreport_cmd->add_option("--title", qcr_title, "Report title");
+  qcreport_cmd->add_option("--client", qcr_client, "Client name");
+  qcreport_cmd->add_option("--thumbnails", qcr_thumb_count, "Number of thumbnails")->default_val(12);
+  qcreport_cmd->add_flag("--no-thumbnails", [&](auto) { qcr_thumbnails = false; }, "Skip thumbnails");
+  qcreport_cmd->add_flag("--no-waveform", [&](auto) { qcr_waveform = false; }, "Skip waveform");
+  qcreport_cmd->add_flag("--no-loudness", [&](auto) { qcr_loudness = false; }, "Skip loudness chart");
+  qcreport_cmd->add_flag("--no-bitrate", [&](auto) { qcr_bitrate = false; }, "Skip bitrate chart");
+
+  // === LOUDNESS subcommand ===
+  auto* loudness_cmd = app.add_subcommand("loudness", "EBU R128 / ATSC loudness measurement");
+  std::string loud_audio, loud_output;
+  double loud_target = -23.0;
+  bool loud_normalize = false;
+  loudness_cmd->add_option("audio", loud_audio, "Audio file (WAV, MXF)")->required()->check(CLI::ExistingFile);
+  loudness_cmd->add_option("-o,--output", loud_output, "Normalized output file");
+  loudness_cmd->add_option("--target", loud_target, "Target loudness LUFS")->default_val(-23.0);
+  loudness_cmd->add_flag("--normalize", loud_normalize, "Normalize audio to target");
+
+  // === AV-SYNC subcommand ===
+  auto* avsync_cmd = app.add_subcommand("av-sync", "Audio/video sync drift detection");
+  std::string avs_video, avs_audio;
+  uint32_t avs_fps_num = 24, avs_fps_den = 1, avs_sample_rate = 48000;
+  avsync_cmd->add_option("-v,--video", avs_video, "Video file")->required()->check(CLI::ExistingFile);
+  avsync_cmd->add_option("-a,--audio", avs_audio, "Audio file")->required()->check(CLI::ExistingFile);
+  avsync_cmd->add_option("--fps-num", avs_fps_num, "FPS numerator")->default_val(24);
+  avsync_cmd->add_option("--fps-den", avs_fps_den, "FPS denominator")->default_val(1);
+  avsync_cmd->add_option("--sample-rate", avs_sample_rate, "Audio sample rate")->default_val(48000);
+
+  // === HDR-VALIDATE subcommand ===
+  auto* hdrval_cmd = app.add_subcommand("hdr-validate", "HDR metadata validation");
+  std::string hv_video, hv_spec;
+  uint16_t hv_max_cll = 0, hv_max_fall = 0;
+  uint32_t hv_bit_depth = 0;
+  hdrval_cmd->add_option("video", hv_video, "Video file")->required()->check(CLI::ExistingFile);
+  hdrval_cmd->add_option("-s,--spec", hv_spec, "HDR spec")->required()
+      ->check(CLI::IsMember({"hdr10", "hlg", "dolby_vision", "hdr10plus"}));
+  hdrval_cmd->add_option("--max-cll", hv_max_cll, "Expected MaxCLL");
+  hdrval_cmd->add_option("--max-fall", hv_max_fall, "Expected MaxFALL");
+  hdrval_cmd->add_option("--bit-depth", hv_bit_depth, "Expected bit depth");
+
+  // === FRAME-COMPARE subcommand ===
+  auto* fcomp_cmd = app.add_subcommand("frame-compare", "Frame-by-frame PSNR/SSIM/VMAF comparison");
+  std::string fc_imp_a, fc_imp_b, fc_file_a, fc_file_b, fc_output;
+  double fc_threshold = 40.0;
+  uint32_t fc_start = 0, fc_end = 0;
+  bool fc_html = false, fc_extract_diffs = false, fc_ssim = true, fc_vmaf = false;
+  fcomp_cmd->add_option("--imp-a", fc_imp_a, "First IMP directory");
+  fcomp_cmd->add_option("--imp-b", fc_imp_b, "Second IMP directory");
+  fcomp_cmd->add_option("--file-a", fc_file_a, "First file (direct comparison)");
+  fcomp_cmd->add_option("--file-b", fc_file_b, "Second file (direct comparison)");
+  fcomp_cmd->add_option("-t,--threshold", fc_threshold, "PSNR threshold (dB)")->default_val(40.0);
+  fcomp_cmd->add_option("-o,--output", fc_output, "Output directory for reports/diffs");
+  fcomp_cmd->add_option("--start-frame", fc_start, "Start frame");
+  fcomp_cmd->add_option("--end-frame", fc_end, "End frame");
+  fcomp_cmd->add_flag("--html", fc_html, "Generate HTML report");
+  fcomp_cmd->add_flag("--extract-diffs", fc_extract_diffs, "Extract diff images");
+  fcomp_cmd->add_flag("--vmaf", fc_vmaf, "Compute VMAF scores");
+  fcomp_cmd->add_flag("--no-ssim", [&](auto) { fc_ssim = false; }, "Skip SSIM computation");
+
+  // === IMP-INFO subcommand ===
+  auto* impinfo_cmd = app.add_subcommand("imp-info", "Display IMP package information");
+  std::string impinfo_dir;
+  impinfo_cmd->add_option("imp_dir", impinfo_dir, "IMP directory")->required()->check(CLI::ExistingDirectory);
 
   // Additional validate flags
   bool suggest_fixes_flag = false;
@@ -438,6 +552,304 @@ int main(int argc, char* argv[])
         std::cout << "  No issues detected.\n";
     }
     return result.issues.empty() ? 0 : 1;
+  }
+
+  // === VALIDATE-IMP mode ===
+  if(validate_imp_cmd->parsed())
+  {
+    auto vr = dcpdoctor::validate_with_photon(vimp_dir);
+    std::cout << "IMP Validation: " << (vr.valid ? "PASS" : "FAIL") << "\n";
+    if(!vr.notes.empty())
+    {
+      for(const auto& n : vr.notes)
+      {
+        const char* sev = "INFO";
+        if(n.severity == dcpdoctor::ValidationNote::Severity::error)
+          sev = "ERROR";
+        else if(n.severity == dcpdoctor::ValidationNote::Severity::warning)
+          sev = "WARN";
+        std::cout << "  [" << sev << "] " << n.message << "\n";
+      }
+    }
+    return vr.valid ? 0 : 1;
+  }
+
+  // === SCHEMA-VALIDATE mode ===
+  if(schema_val_cmd->parsed())
+  {
+    dcpdoctor::SchemaValidateOptions sv_opts;
+    sv_opts.imp_dir = sv_imp_dir;
+    if(!sv_schema_dir.empty())
+      sv_opts.schema_dir = sv_schema_dir;
+    sv_opts.validate_cpl = sv_cpl;
+    sv_opts.validate_pkl = sv_pkl;
+    sv_opts.validate_assetmap = sv_assetmap;
+
+    auto sr = dcpdoctor::validate_against_schema(sv_opts);
+    std::cout << "Schema Validation: " << (sr.valid ? "PASS" : "FAIL") << "\n";
+    if(!sr.schema_version.empty())
+      std::cout << "  Schema: " << sr.schema_version << "\n";
+    for(const auto& e : sr.errors)
+    {
+      std::cout << "  " << (e.is_warning ? "WARN" : "ERROR") << " " << e.file
+                << ":" << e.line << ":" << e.column << " " << e.message << "\n";
+    }
+    return sr.valid ? 0 : 1;
+  }
+
+  // === IMF-COMPLIANCE mode ===
+  if(imfcomp_cmd->parsed())
+  {
+    dcpdoctor::ImfComplianceOptions ic_opts;
+    ic_opts.imp_dir = imfcomp_dir;
+    ic_opts.strict = imfcomp_strict;
+    if(imfcomp_target == "netflix") ic_opts.target = dcpdoctor::ImfComplianceTarget::Netflix;
+    else if(imfcomp_target == "disney") ic_opts.target = dcpdoctor::ImfComplianceTarget::Disney;
+    else if(imfcomp_target == "amazon") ic_opts.target = dcpdoctor::ImfComplianceTarget::Amazon;
+    else if(imfcomp_target == "apple") ic_opts.target = dcpdoctor::ImfComplianceTarget::Apple;
+    else if(imfcomp_target == "cinema2k") ic_opts.target = dcpdoctor::ImfComplianceTarget::Cinema2K;
+    else if(imfcomp_target == "cinema4k") ic_opts.target = dcpdoctor::ImfComplianceTarget::Cinema4K;
+    else if(imfcomp_target == "broadcast-hd") ic_opts.target = dcpdoctor::ImfComplianceTarget::BroadcastHD;
+    else ic_opts.target = dcpdoctor::ImfComplianceTarget::BroadcastUHD;
+
+    auto cr = dcpdoctor::check_imf_compliance(ic_opts);
+    if(!cr.success)
+    {
+      std::cerr << "Error: " << cr.error << "\n";
+      return 1;
+    }
+    std::cout << dcpdoctor::imf_compliance_target_name(cr.target) << " Compliance: "
+              << (cr.compliant ? "PASS" : "FAIL") << "\n";
+    for(const auto& c : cr.checks)
+    {
+      std::cout << "  " << (c.passed ? "PASS" : "FAIL") << " " << c.rule
+                << ": " << c.description;
+      if(!c.actual_value.empty())
+        std::cout << " (got " << c.actual_value << ", expected " << c.expected_value << ")";
+      std::cout << "\n";
+    }
+    return cr.compliant ? 0 : 1;
+  }
+
+  // === FRAME-QC mode ===
+  if(frameqc_cmd->parsed())
+  {
+    dcpdoctor::FrameQcOptions fqc_opts;
+    fqc_opts.j2k_dir = fqc_dir;
+    fqc_opts.target_bitrate_mbps = fqc_target_br;
+    fqc_opts.max_bitrate_mbps = fqc_max_br;
+    fqc_opts.min_bitrate_mbps = fqc_min_br;
+
+    auto fr = dcpdoctor::analyze_frame_qc(fqc_opts);
+    if(!fr.success)
+    {
+      std::cerr << "Error: " << fr.error << "\n";
+      return 1;
+    }
+    std::cout << "Frame QC Analysis:\n";
+    std::cout << "  Total frames: " << fr.total_frames << "\n";
+    std::cout << "  Average bitrate: " << fr.average_bitrate_mbps << " Mbps\n";
+    std::cout << "  Peak bitrate: " << fr.peak_bitrate_mbps << " Mbps\n";
+    std::cout << "  Over budget: " << fr.over_budget_count << "\n";
+    std::cout << "  Under budget: " << fr.under_budget_count << "\n";
+    return (fr.over_budget_count == 0 && fr.under_budget_count == 0) ? 0 : 1;
+  }
+
+  // === QC-REPORT mode ===
+  if(qcreport_cmd->parsed())
+  {
+    dcpdoctor::DetailedQcOptions qcr_opts;
+    qcr_opts.imp_dir = qcr_imp_dir;
+    qcr_opts.output_file = qcr_output;
+    qcr_opts.title = qcr_title;
+    qcr_opts.client = qcr_client;
+    qcr_opts.include_thumbnails = qcr_thumbnails;
+    qcr_opts.include_waveform = qcr_waveform;
+    qcr_opts.include_loudness = qcr_loudness;
+    qcr_opts.include_bitrate_chart = qcr_bitrate;
+    qcr_opts.thumbnail_count = qcr_thumb_count;
+
+    auto qr = dcpdoctor::generate_detailed_qc(qcr_opts);
+    if(!qr.success)
+    {
+      std::cerr << "Error: " << qr.error << "\n";
+      return 1;
+    }
+    std::cout << "QC report written to: " << qr.output_file << " (" << qr.pages << " pages)\n";
+    return 0;
+  }
+
+  // === LOUDNESS mode ===
+  if(loudness_cmd->parsed())
+  {
+    if(loud_normalize && !loud_output.empty())
+    {
+      dcpdoctor::NormalizeOptions norm_opts;
+      norm_opts.input_file = loud_audio;
+      norm_opts.output_file = loud_output;
+      norm_opts.target_lufs = loud_target;
+      auto nr = dcpdoctor::normalize_loudness(norm_opts);
+      if(!nr.success)
+      {
+        std::cerr << "Error: " << nr.error << "\n";
+        return 1;
+      }
+      std::cout << "Normalized to " << loud_target << " LUFS\n";
+      std::cout << "Output: " << nr.output_file << "\n";
+      return 0;
+    }
+    else
+    {
+      auto lr = dcpdoctor::measure_imf_loudness(loud_audio);
+      if(!lr.success)
+      {
+        std::cerr << "Error: " << lr.error << "\n";
+        return 1;
+      }
+      std::cout << "Loudness Measurement:\n";
+      std::cout << "  Integrated: " << lr.integrated_lufs << " LUFS\n";
+      std::cout << "  Range: " << lr.loudness_range_lu << " LU\n";
+      std::cout << "  True peak: " << lr.true_peak_dbtp << " dBTP\n";
+      std::cout << "  EBU R128: " << (lr.compliant_r128 ? "PASS" : "FAIL") << "\n";
+      std::cout << "  ATSC A/85: " << (lr.compliant_atsc ? "PASS" : "FAIL") << "\n";
+      return (lr.compliant_r128 || lr.compliant_atsc) ? 0 : 1;
+    }
+  }
+
+  // === AV-SYNC mode ===
+  if(avsync_cmd->parsed())
+  {
+    dcpdoctor::AvSyncOptions avs_opts;
+    avs_opts.video_file = avs_video;
+    avs_opts.audio_file = avs_audio;
+    avs_opts.fps_num = avs_fps_num;
+    avs_opts.fps_den = avs_fps_den;
+    avs_opts.sample_rate = avs_sample_rate;
+
+    auto ar = dcpdoctor::detect_av_sync(avs_opts);
+    if(!ar.success)
+    {
+      std::cerr << "Error: " << ar.error << "\n";
+      return 1;
+    }
+    std::cout << "AV Sync: " << (ar.in_sync ? "IN SYNC" : "OUT OF SYNC") << "\n";
+    std::cout << "  Drift: " << ar.drift_ms << " ms (" << ar.drift_frames << " frames)\n";
+    if(!ar.recommendation.empty())
+      std::cout << "  Recommendation: " << ar.recommendation << "\n";
+    return ar.in_sync ? 0 : 1;
+  }
+
+  // === HDR-VALIDATE mode ===
+  if(hdrval_cmd->parsed())
+  {
+    dcpdoctor::HdrValidateOptions hv_opts;
+    hv_opts.video_path = hv_video;
+    hv_opts.target_spec = hv_spec;
+    hv_opts.expected_max_cll = hv_max_cll;
+    hv_opts.expected_max_fall = hv_max_fall;
+    hv_opts.expected_bit_depth = hv_bit_depth;
+
+    if(hv_spec == "hdr10")
+    {
+      hv_opts.expected_transfer = dcpdoctor::TransferFunction::PQ;
+      hv_opts.expected_colorimetry = dcpdoctor::Colorimetry::BT2020;
+    }
+    else if(hv_spec == "hlg")
+    {
+      hv_opts.expected_transfer = dcpdoctor::TransferFunction::HLG;
+      hv_opts.expected_colorimetry = dcpdoctor::Colorimetry::BT2020;
+    }
+
+    auto hr = dcpdoctor::validate_hdr_metadata(hv_opts);
+    if(!hr.success)
+    {
+      std::cerr << "Error: " << hr.error << "\n";
+      return 1;
+    }
+    std::cout << "HDR Validation: " << (hr.valid ? "PASS" : "FAIL") << "\n";
+    for(const auto& issue : hr.issues)
+    {
+      std::cout << "  [" << issue.severity << "] " << issue.field
+                << ": expected " << issue.expected << ", got " << issue.actual << "\n";
+    }
+    return hr.valid ? 0 : 1;
+  }
+
+  // === FRAME-COMPARE mode ===
+  if(fcomp_cmd->parsed())
+  {
+    if(!fc_file_a.empty() && !fc_file_b.empty())
+    {
+      dcpdoctor::CompareOptions cfo;
+      cfo.threshold_psnr = fc_threshold;
+      cfo.start_frame = fc_start;
+      cfo.end_frame = fc_end;
+      cfo.generate_html = fc_html;
+      cfo.extract_diff_frames = fc_extract_diffs;
+      cfo.compute_ssim = fc_ssim;
+      cfo.compute_vmaf = fc_vmaf;
+      if(!fc_output.empty())
+        cfo.output_dir = fc_output;
+
+      auto cr = dcpdoctor::compare_files(fc_file_a, fc_file_b, cfo);
+      if(!cr.success)
+      {
+        std::cerr << "Error: " << cr.error << "\n";
+        return 1;
+      }
+      std::cout << "Comparison: " << cr.frames_compared << " frames, "
+                << cr.frames_different << " significant differences\n";
+      std::cout << "  Avg PSNR: " << cr.avg_psnr << " dB\n";
+      return cr.frames_different == 0 ? 0 : 1;
+    }
+    else
+    {
+      dcpdoctor::CompareOptions co;
+      co.imp_a = fc_imp_a;
+      co.imp_b = fc_imp_b;
+      co.threshold_psnr = fc_threshold;
+      co.start_frame = fc_start;
+      co.end_frame = fc_end;
+      co.generate_html = fc_html;
+      co.extract_diff_frames = fc_extract_diffs;
+      co.compute_ssim = fc_ssim;
+      co.compute_vmaf = fc_vmaf;
+      if(!fc_output.empty())
+        co.output_dir = fc_output;
+
+      auto cr = dcpdoctor::compare_imps(co);
+      if(!cr.success)
+      {
+        std::cerr << "Error: " << cr.error << "\n";
+        return 1;
+      }
+      std::cout << "Comparison: " << cr.frames_compared << " frames, "
+                << cr.frames_different << " significant differences\n";
+      std::cout << "  Avg PSNR: " << cr.avg_psnr << " dB\n";
+      return cr.frames_different == 0 ? 0 : 1;
+    }
+  }
+
+  // === IMP-INFO mode ===
+  if(impinfo_cmd->parsed())
+  {
+    auto info = dcpdoctor::read_imp_info(impinfo_dir);
+    if(!info.valid)
+    {
+      std::cerr << "Error: " << info.error << "\n";
+      return 1;
+    }
+    std::cout << "IMP: " << info.path << "\n";
+    std::cout << "  CPL: " << info.cpl_uuid << " (" << info.cpl_title << ")\n";
+    std::cout << "  PKL: " << info.pkl_uuid << "\n";
+    std::cout << "  Issuer: " << info.issuer << "\n";
+    std::cout << "  Date: " << info.issue_date << "\n";
+    std::cout << "  Tracks: " << info.tracks.size() << "\n";
+    for(const auto& t : info.tracks)
+    {
+      std::cout << "    " << t.type << ": " << t.filename << " (" << t.size << " bytes)\n";
+    }
+    return 0;
   }
 
   // === VALIDATE mode (default) ===
