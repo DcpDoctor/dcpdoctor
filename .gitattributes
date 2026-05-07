@@ -1,0 +1,2 @@
+# Ensure test fixtures maintain exact byte content across platforms
+tests/fixtures/** binary

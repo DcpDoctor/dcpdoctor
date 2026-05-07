@@ -791,8 +791,8 @@ TEST(diff_report_different)
 TEST(cache_basic_operations)
 {
   // Create a temp file to cache
-  fs::path tmp = "/tmp/dcpdoctor_test_cache.db";
-  fs::path test_file = "/tmp/dcpdoctor_test_file.txt";
+  fs::path tmp = fs::temp_directory_path() / "dcpdoctor_test_cache.db";
+  fs::path test_file = fs::temp_directory_path() / "dcpdoctor_test_file.txt";
 
   // Create test file
   {
