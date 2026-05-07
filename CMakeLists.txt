@@ -107,8 +107,8 @@ add_library(dcpdoctor_core STATIC
     src/info.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/extern/asdcplib/src)
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/asdcplib/src)
 
 if(WIN32)
     target_compile_definitions(dcpdoctor_core PUBLIC KM_WIN32)
