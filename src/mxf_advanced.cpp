@@ -3,6 +3,7 @@
 #include <KM_fileio.h>
 #include <fstream>
 #include <cstring>
+#include <algorithm>
 
 namespace dcpdoctor {
 namespace fs = std::filesystem;
@@ -49,8 +50,8 @@ MxfPartitionInfo validate_mxf_partitions(const fs::path& mxf_path) {
 
     // Scan last portion for footer partition
     if (file_size > 1024) {
-        f.seekg(-std::min(int64_t(65536), int64_t(file_size)), std::ios::end);
-        std::vector<uint8_t> tail(std::min(size_t(65536), size_t(file_size)));
+        f.seekg(-(std::min)(int64_t(65536), int64_t(file_size)), std::ios::end);
+        std::vector<uint8_t> tail((std::min)(size_t(65536), size_t(file_size)));
         f.read(reinterpret_cast<char*>(tail.data()), tail.size());
 
         for (size_t i = 0; i + 16 <= tail.size(); ++i) {

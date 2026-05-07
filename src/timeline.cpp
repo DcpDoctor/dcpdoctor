@@ -42,7 +42,7 @@ std::string format_timecode(uint64_t frames, double fps) {
 std::vector<TimelineReel> extract_timeline(const std::filesystem::path& cpl_path) {
     std::vector<TimelineReel> reels;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return reels;
 
@@ -168,7 +168,7 @@ void write_timeline_svg(std::ostream& out,
         // Picture track
         if (r.has_picture) {
             out << "<rect x=\"" << int(x) << "\" y=\"" << y_pic
-                << "\" width=\"" << std::max(1, int(w)) << "\" height=\"" << track_height
+                << "\" width=\"" << (std::max)(1, int(w)) << "\" height=\"" << track_height
                 << "\" class=\"pic\" rx=\"3\"/>\n";
         }
 
@@ -176,7 +176,7 @@ void write_timeline_svg(std::ostream& out,
         if (r.has_sound) {
             double sw = r.sound_duration * pixels_per_frame;
             out << "<rect x=\"" << int(x) << "\" y=\"" << y_snd
-                << "\" width=\"" << std::max(1, int(sw)) << "\" height=\"" << track_height
+                << "\" width=\"" << (std::max)(1, int(sw)) << "\" height=\"" << track_height
                 << "\" class=\"snd\" rx=\"3\"/>\n";
         }
 
@@ -184,7 +184,7 @@ void write_timeline_svg(std::ostream& out,
         if (r.has_subtitle) {
             double subw = r.subtitle_duration * pixels_per_frame;
             out << "<rect x=\"" << int(x) << "\" y=\"" << y_sub
-                << "\" width=\"" << std::max(1, int(subw)) << "\" height=\"" << track_height
+                << "\" width=\"" << (std::max)(1, int(subw)) << "\" height=\"" << track_height
                 << "\" class=\"sub\" rx=\"3\"/>\n";
         }
 

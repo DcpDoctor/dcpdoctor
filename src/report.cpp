@@ -3,7 +3,15 @@
 #include <cstdlib>
 #include <format>
 #include <ostream>
+#ifdef _WIN32
+#include <io.h>
+#define DCPDOCTOR_ISATTY _isatty
+#define DCPDOCTOR_FILENO _fileno
+#else
 #include <unistd.h>
+#define DCPDOCTOR_ISATTY isatty
+#define DCPDOCTOR_FILENO fileno
+#endif
 
 namespace dcpdoctor {
 
@@ -12,7 +20,7 @@ namespace color {
 static bool enabled = false;
 
 static void detect() {
-    enabled = isatty(STDOUT_FILENO) != 0;
+    enabled = DCPDOCTOR_ISATTY(DCPDOCTOR_FILENO(stdout)) != 0;
     // Also respect NO_COLOR env var
     if (const char* nc = getenv("NO_COLOR"); nc && nc[0])
         enabled = false;
@@ -221,7 +229,7 @@ void write_report(const VerifyResult& result, const std::filesystem::path& dcp_d
 // === ProgressBar implementation ===
 
 ProgressBar::ProgressBar(int total, const std::string& label)
-    : total_(total), label_(label), is_tty_(isatty(STDERR_FILENO) != 0) {
+    : total_(total), label_(label), is_tty_(DCPDOCTOR_ISATTY(DCPDOCTOR_FILENO(stderr)) != 0) {
     if (const char* nc = getenv("NO_COLOR"); nc && nc[0])
         is_tty_ = false;
 }

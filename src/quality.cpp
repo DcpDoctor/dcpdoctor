@@ -39,7 +39,7 @@ J2kQualityScore estimate_j2k_quality(double bitrate_mbps, uint32_t width,
     // J2K visually lossless typically needs >= 1.5 bpp for cinema
     if (score.bits_per_pixel >= 1.5) {
         score.quality_grade = "Excellent";
-        score.quality_score = 90.0 + std::min(10.0, (score.bits_per_pixel - 1.5) * 10.0);
+        score.quality_score = 90.0 + (std::min)(10.0, (score.bits_per_pixel - 1.5) * 10.0);
         score.estimated_psnr_db = 50.0 + (score.bits_per_pixel - 1.5) * 5.0;
     } else if (score.bits_per_pixel >= 1.0) {
         score.quality_grade = "Good";
@@ -51,7 +51,7 @@ J2kQualityScore estimate_j2k_quality(double bitrate_mbps, uint32_t width,
         score.estimated_psnr_db = 38.0 + (score.bits_per_pixel - 0.5) * 12.0;
     } else {
         score.quality_grade = "Poor";
-        score.quality_score = std::max(10.0, score.bits_per_pixel * 100.0);
+        score.quality_score = (std::max)(10.0, score.bits_per_pixel * 100.0);
         score.estimated_psnr_db = 30.0 + score.bits_per_pixel * 16.0;
     }
 

@@ -336,7 +336,7 @@ AtmosIabInfo parse_atmos_iab(const fs::path& mxf_path) {
                 info.object_count = adesc.ChannelCount - 10;  // rough estimate
                 info.bed_count = 10;  // 7.1.4 bed = 10 discrete channels
             } else {
-                info.bed_count = std::min(uint32_t(10), uint32_t(adesc.ChannelCount));
+                info.bed_count = (std::min)(uint32_t(10), uint32_t(adesc.ChannelCount));
                 info.object_count = (adesc.ChannelCount > 10) ?
                                      adesc.ChannelCount - 10 : 0;
             }
