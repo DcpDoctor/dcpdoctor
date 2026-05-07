@@ -61,12 +61,4 @@ struct ImfHdrMetadata
   std::optional<ContentLightLevel> content_light;
 };
 
-// Preset HDR configurations
-ImfHdrMetadata hdr10_preset(); // PQ + BT.2020 + typical mastering display
-ImfHdrMetadata hlg_preset(); // HLG + BT.2020
-ImfHdrMetadata p3d65_sdr_preset(); // SDR + P3-D65
-
-// Generate XML element for CPL color metadata (ST 2067-21)
-std::string generate_color_metadata_xml(const ImfHdrMetadata& meta);
-
 } // namespace dcpdoctor

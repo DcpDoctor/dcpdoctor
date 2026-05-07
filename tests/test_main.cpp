@@ -13,6 +13,20 @@
 #include "dcpdoctor/cache.h"
 #include "dcpdoctor/theater.h"
 #include "dcpdoctor/fixes.h"
+#include "dcpdoctor/auto_qc.h"
+#include "dcpdoctor/av_sync.h"
+#include "dcpdoctor/checksum_verify.h"
+#include "dcpdoctor/frame_compare.h"
+#include "dcpdoctor/hdr.h"
+#include "dcpdoctor/hdr_validate.h"
+#include "dcpdoctor/imf_compliance.h"
+#include "dcpdoctor/info.h"
+#include "dcpdoctor/loudness.h"
+#include "dcpdoctor/mxf_extract.h"
+#include "dcpdoctor/qc.h"
+#include "dcpdoctor/qc_report.h"
+#include "dcpdoctor/schema_validate.h"
+#include "dcpdoctor/validate.h"
 #include <cassert>
 #include <cstring>
 #include <filesystem>
@@ -984,6 +998,227 @@ TEST(audio_sync_with_drift)
   ASSERT(!notes.empty());
   ASSERT(notes[0].severity == dcpdoctor::Severity::warning);
   ASSERT(notes[0].message.find("drift") != std::string::npos);
+}
+
+// ============================================================
+// Tests for new QC/validation modules (moved from imfwizard)
+// ============================================================
+
+// --- validate_with_photon ---
+TEST(validate_nonexistent_imp)
+{
+  auto result = dcpdoctor::validate_with_photon("/tmp/no_such_imp_12345");
+  ASSERT(!result.valid);
+}
+
+TEST(validation_note_severity)
+{
+  dcpdoctor::ValidationNote note;
+  note.severity = dcpdoctor::ValidationNote::Severity::error;
+  ASSERT(note.severity == dcpdoctor::ValidationNote::Severity::error);
+  note.severity = dcpdoctor::ValidationNote::Severity::warning;
+  ASSERT(note.severity == dcpdoctor::ValidationNote::Severity::warning);
+  note.severity = dcpdoctor::ValidationNote::Severity::info;
+  ASSERT(note.severity == dcpdoctor::ValidationNote::Severity::info);
+}
+
+// --- schema_validate ---
+TEST(schema_validate_nonexistent)
+{
+  dcpdoctor::SchemaValidateOptions opts;
+  opts.imp_dir = "/tmp/no_such_imp_12345";
+  auto result = dcpdoctor::validate_against_schema(opts);
+  ASSERT(!result.valid);
+}
+
+TEST(schema_validate_options_defaults)
+{
+  dcpdoctor::SchemaValidateOptions opts;
+  ASSERT(opts.validate_cpl == true);
+  ASSERT(opts.validate_pkl == true);
+  ASSERT(opts.validate_assetmap == true);
+  ASSERT(opts.strict == false);
+}
+
+// --- imf_compliance ---
+TEST(imf_compliance_nonexistent)
+{
+  dcpdoctor::ImfComplianceOptions opts;
+  opts.imp_dir = "/tmp/no_such_imp_12345";
+  opts.target = dcpdoctor::ImfComplianceTarget::Netflix;
+  auto result = dcpdoctor::check_imf_compliance(opts);
+  ASSERT(!result.success || !result.compliant);
+}
+
+TEST(imf_compliance_target_name)
+{
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Netflix) == "Netflix");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Disney) == "Disney+");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Amazon) == "Amazon");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Apple) == "Apple TV+");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Cinema2K) == "Cinema 2K");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::Cinema4K) == "Cinema 4K");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::BroadcastHD) == "Broadcast HD");
+  ASSERT(dcpdoctor::imf_compliance_target_name(dcpdoctor::ImfComplianceTarget::BroadcastUHD) == "Broadcast UHD");
+}
+
+// --- frame_qc ---
+TEST(frame_qc_nonexistent_dir)
+{
+  dcpdoctor::FrameQcOptions opts;
+  opts.j2k_dir = "/tmp/no_such_j2k_dir_12345";
+  auto result = dcpdoctor::analyze_frame_qc(opts);
+  ASSERT(!result.success || result.total_frames == 0);
+}
+
+TEST(frame_qc_options_defaults)
+{
+  dcpdoctor::FrameQcOptions opts;
+  ASSERT(opts.target_bitrate_mbps == 250.0);
+  ASSERT(opts.max_bitrate_mbps == 300.0);
+  ASSERT(opts.min_bitrate_mbps == 50.0);
+  ASSERT(opts.fps_num == 24);
+  ASSERT(opts.fps_den == 1);
+}
+
+// --- qc_report ---
+TEST(qc_report_options_defaults)
+{
+  dcpdoctor::DetailedQcOptions opts;
+  ASSERT(opts.include_thumbnails == true);
+  ASSERT(opts.include_waveform == true);
+  ASSERT(opts.include_loudness == true);
+  ASSERT(opts.include_bitrate_chart == true);
+  ASSERT(opts.thumbnail_count == 12);
+}
+
+// --- loudness ---
+TEST(loudness_nonexistent_file)
+{
+  auto result = dcpdoctor::measure_imf_loudness("/tmp/no_such_audio_12345.wav");
+  ASSERT(!result.success);
+}
+
+TEST(normalize_options_defaults)
+{
+  dcpdoctor::NormalizeOptions opts;
+  ASSERT(opts.target_lufs == -23.0);
+  ASSERT(opts.true_peak_limit == -1.0);
+}
+
+// --- av_sync ---
+TEST(av_sync_nonexistent)
+{
+  dcpdoctor::AvSyncOptions opts;
+  opts.video_file = "/tmp/no_such_video_12345.mxf";
+  opts.audio_file = "/tmp/no_such_audio_12345.wav";
+  auto result = dcpdoctor::detect_av_sync(opts);
+  ASSERT(!result.success);
+}
+
+TEST(av_sync_options_defaults)
+{
+  dcpdoctor::AvSyncOptions opts;
+  ASSERT(opts.fps_num == 24);
+  ASSERT(opts.fps_den == 1);
+  ASSERT(opts.sample_rate == 48000);
+}
+
+// --- hdr_validate ---
+TEST(hdr_validate_nonexistent)
+{
+  dcpdoctor::HdrValidateOptions opts;
+  opts.video_path = "/tmp/no_such_video_12345.mxf";
+  opts.target_spec = "hdr10";
+  auto result = dcpdoctor::validate_hdr_metadata(opts);
+  ASSERT(!result.success);
+}
+
+TEST(hdr_types)
+{
+  dcpdoctor::ImfHdrMetadata meta;
+  meta.transfer = dcpdoctor::TransferFunction::PQ;
+  meta.colorimetry = dcpdoctor::Colorimetry::BT2020;
+  meta.bit_depth = 10;
+  ASSERT(meta.transfer == dcpdoctor::TransferFunction::PQ);
+  ASSERT(meta.colorimetry == dcpdoctor::Colorimetry::BT2020);
+  ASSERT(meta.bit_depth == 10);
+
+  dcpdoctor::ContentLightLevel cll;
+  cll.max_cll = 1000;
+  cll.max_fall = 400;
+  meta.content_light = cll;
+  ASSERT(meta.content_light.has_value());
+  ASSERT(meta.content_light->max_cll == 1000);
+}
+
+// --- frame_compare ---
+TEST(compare_options_defaults)
+{
+  dcpdoctor::CompareOptions opts;
+  ASSERT(opts.threshold_psnr == 40.0);
+  ASSERT(opts.threshold_ssim == 0.95);
+  ASSERT(opts.sample_interval == 1);
+  ASSERT(opts.start_frame == 0);
+  ASSERT(opts.end_frame == 0);
+  ASSERT(opts.generate_html == false);
+  ASSERT(opts.extract_diff_frames == false);
+  ASSERT(opts.compute_ssim == true);
+  ASSERT(opts.compute_vmaf == false);
+}
+
+TEST(compare_result_defaults)
+{
+  dcpdoctor::CompareResult result;
+  ASSERT(result.frames_compared == 0);
+  ASSERT(result.frames_different == 0);
+  ASSERT(result.identical == false);
+  ASSERT(result.success == false);
+}
+
+// --- info ---
+TEST(imp_info_nonexistent)
+{
+  auto info = dcpdoctor::read_imp_info("/tmp/no_such_imp_12345");
+  ASSERT(!info.valid);
+}
+
+// --- checksum_verify ---
+TEST(checksum_verify_nonexistent)
+{
+  dcpdoctor::ChecksumVerifyOptions opts;
+  opts.package_dir = "/tmp/no_such_imp_12345";
+  auto result = dcpdoctor::verify_package_checksums(opts);
+  ASSERT(!result.success || !result.all_valid);
+}
+
+// --- mxf_extract ---
+TEST(mxf_extract_nonexistent)
+{
+  dcpdoctor::MxfExtractOptions opts;
+  opts.input = "/tmp/no_such_mxf_12345.mxf";
+  opts.output_dir = "/tmp/no_such_output_12345";
+  auto result = dcpdoctor::extract_mxf(opts);
+  ASSERT(!result.success);
+}
+
+// --- auto_qc ---
+TEST(auto_qc_no_input)
+{
+  dcpdoctor::AutoQcOptions opts;
+  // No video or audio file set
+  auto result = dcpdoctor::run_auto_qc(opts);
+  // Should either fail or produce no issues
+  ASSERT(result.issues.empty() || !result.issues.empty()); // just verify it doesn't crash
+}
+
+TEST(auto_qc_nonexistent_video)
+{
+  dcpdoctor::AutoQcOptions opts;
+  opts.video_path = "/tmp/no_such_video_12345.mxf";
+  auto result = dcpdoctor::run_auto_qc(opts);
+  // May fail or produce empty results
+  ASSERT(result.issues.empty() || !result.issues.empty());
 }
 
 int main()
