@@ -841,6 +841,24 @@
                 <p>KDM XML parsing and validation. Key period checking. Certificate chain trust verification.</p>
                 <span class="feat-tag tag-core">Core</span>
             </div>
+            <div class="feat-card">
+                <div class="feat-icon">&#9989;</div>
+                <h3>Checksum Verification</h3>
+                <p>Verify all PKL asset hashes and file sizes for DCP or IMF packages. Detects corruption, missing files, and size mismatches.</p>
+                <span class="feat-tag tag-core">Core</span>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">&#128230;</div>
+                <h3>MXF Essence Extraction</h3>
+                <p>Extract video and audio tracks from MXF containers. Frame range selection, per-track extraction, lossless unwrap.</p>
+                <span class="feat-tag tag-studio">Studio</span>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">&#128269;</div>
+                <h3>Automated QC</h3>
+                <p>Detect black frames, freeze frames, audio silence, and audio clipping. Configurable thresholds. JSON output for integration.</p>
+                <span class="feat-tag tag-studio">Studio</span>
+            </div>
         </div>
     </div>
 </section>
@@ -944,6 +962,27 @@
                 <p>Diff two DCP packages to find changes.</p>
 <pre>dcpdoctor diff /path/to/DCP_v1/ \
   /path/to/DCP_v2/</pre>
+            </div>
+            <div class="pipeline-card">
+                <span class="pipe-tag">QC</span>
+                <h3>Automated QC</h3>
+                <p>Detect black frames, freeze frames, silence, and clipping.</p>
+<pre>dcpdoctor auto-qc \
+  --video /path/to/content.mxf</pre>
+            </div>
+            <div class="pipeline-card">
+                <span class="pipe-tag">Integrity</span>
+                <h3>Checksum Verification</h3>
+                <p>Verify all PKL hashes and file sizes in a package.</p>
+<pre>dcpdoctor checksum-verify \
+  /path/to/DCP/</pre>
+            </div>
+            <div class="pipeline-card">
+                <span class="pipe-tag">Extract</span>
+                <h3>MXF Extraction</h3>
+                <p>Unwrap video/audio essence from MXF containers.</p>
+<pre>dcpdoctor mxf-extract \
+  /path/to/picture.mxf -o ./out/</pre>
             </div>
         </div>
     </div>

@@ -1,8 +1,11 @@
 #include "dcpdoctor/dcpdoctor.h"
 #include "dcpdoctor/advanced.h"
+#include "dcpdoctor/auto_qc.h"
+#include "dcpdoctor/checksum_verify.h"
 #include "dcpdoctor/diff.h"
 #include "dcpdoctor/fixes.h"
 #include "dcpdoctor/kdm.h"
+#include "dcpdoctor/mxf_extract.h"
 #include "dcpdoctor/photon.h"
 #include "dcpdoctor/premium.h"
 #include "dcpdoctor/studio.h"
@@ -102,6 +105,49 @@ int main(int argc, char* argv[])
   kdm_cmd->add_option("kdm_file", kdm_file, "KDM XML file")->required()->check(CLI::ExistingFile);
   kdm_cmd->add_option("--dcp", kdm_dcp, "DCP directory to validate against")
       ->check(CLI::ExistingDirectory);
+
+  // === CHECKSUM-VERIFY subcommand ===
+  auto* checksum_cmd = app.add_subcommand("checksum-verify", "Verify PKL checksums for DCP/IMF");
+  std::string checksum_dir;
+  bool checksum_no_hash = false, checksum_no_size = false, checksum_stop = false;
+  bool checksum_json = false;
+  checksum_cmd->add_option("directory", checksum_dir, "DCP or IMP directory")
+      ->required()
+      ->check(CLI::ExistingDirectory);
+  checksum_cmd->add_flag("--no-hash", checksum_no_hash, "Skip hash verification (fast)");
+  checksum_cmd->add_flag("--no-size", checksum_no_size, "Skip size verification");
+  checksum_cmd->add_flag("--stop-on-error", checksum_stop, "Stop on first mismatch");
+  checksum_cmd->add_flag("--json", checksum_json, "JSON output");
+
+  // === MXF-EXTRACT subcommand ===
+  auto* mxf_extract_cmd = app.add_subcommand("mxf-extract", "Extract essence from MXF container");
+  std::string mxf_input, mxf_output_dir;
+  bool mxf_no_video = false, mxf_no_audio = false;
+  uint32_t mxf_start = 0, mxf_end = 0;
+  mxf_extract_cmd->add_option("input", mxf_input, "MXF file")
+      ->required()
+      ->check(CLI::ExistingFile);
+  mxf_extract_cmd->add_option("-o,--output", mxf_output_dir, "Output directory")->required();
+  mxf_extract_cmd->add_flag("--no-video", mxf_no_video, "Skip video extraction");
+  mxf_extract_cmd->add_flag("--no-audio", mxf_no_audio, "Skip audio extraction");
+  mxf_extract_cmd->add_option("--start-frame", mxf_start, "Start frame (0 = beginning)");
+  mxf_extract_cmd->add_option("--end-frame", mxf_end, "End frame (0 = end)");
+
+  // === AUTO-QC subcommand ===
+  auto* auto_qc_cmd = app.add_subcommand("auto-qc", "Automated QC: black/freeze/silence/clipping");
+  std::string qc_video, qc_audio;
+  bool qc_json_flag = false;
+  double qc_black_thresh = 0.98, qc_freeze_thresh = 0.003;
+  double qc_silence_thresh = -60.0, qc_clip_thresh = -0.5;
+  auto_qc_cmd->add_option("-v,--video", qc_video, "Video file (MXF, MP4, etc.)")
+      ->check(CLI::ExistingFile);
+  auto_qc_cmd->add_option("-a,--audio", qc_audio, "Audio file (WAV, MXF)")
+      ->check(CLI::ExistingFile);
+  auto_qc_cmd->add_flag("--json", qc_json_flag, "JSON output");
+  auto_qc_cmd->add_option("--black-threshold", qc_black_thresh, "Black pixel ratio")->default_val(0.98);
+  auto_qc_cmd->add_option("--freeze-threshold", qc_freeze_thresh, "Freeze noise threshold")->default_val(0.003);
+  auto_qc_cmd->add_option("--silence-threshold", qc_silence_thresh, "Silence dB threshold")->default_val(-60.0);
+  auto_qc_cmd->add_option("--clipping-threshold", qc_clip_thresh, "Clipping dBFS threshold")->default_val(-0.5);
 
   // Additional validate flags
   bool suggest_fixes_flag = false;
@@ -270,6 +316,128 @@ int main(int argc, char* argv[])
         std::cout << "\nKDM validates against DCP.\n";
     }
     return 0;
+  }
+
+  // === CHECKSUM-VERIFY mode ===
+  if(checksum_cmd->parsed())
+  {
+    dcpdoctor::ChecksumVerifyOptions cv_opts;
+    cv_opts.package_dir = checksum_dir;
+    cv_opts.verify_hashes = !checksum_no_hash;
+    cv_opts.verify_sizes = !checksum_no_size;
+    cv_opts.stop_on_first_error = checksum_stop;
+
+    auto result = dcpdoctor::verify_package_checksums(cv_opts);
+    if(!result.success)
+    {
+      std::cerr << "Error: " << result.error << "\n";
+      return 1;
+    }
+
+    if(checksum_json)
+    {
+      std::cout << "{\n";
+      std::cout << "  \"total\": " << result.total_assets << ",\n";
+      std::cout << "  \"verified_ok\": " << result.verified_ok << ",\n";
+      std::cout << "  \"hash_mismatches\": " << result.hash_mismatches << ",\n";
+      std::cout << "  \"size_mismatches\": " << result.size_mismatches << ",\n";
+      std::cout << "  \"missing_files\": " << result.missing_files << ",\n";
+      std::cout << "  \"all_valid\": " << (result.all_valid ? "true" : "false") << "\n";
+      std::cout << "}\n";
+    }
+    else
+    {
+      std::cout << "Checksum Verification: " << checksum_dir << "\n";
+      std::cout << "  Total assets: " << result.total_assets << "\n";
+      std::cout << "  Verified OK:  " << result.verified_ok << "\n";
+      if(result.hash_mismatches > 0)
+        std::cout << "  Hash mismatches: " << result.hash_mismatches << "\n";
+      if(result.size_mismatches > 0)
+        std::cout << "  Size mismatches: " << result.size_mismatches << "\n";
+      if(result.missing_files > 0)
+        std::cout << "  Missing files: " << result.missing_files << "\n";
+      std::cout << "  Result: " << (result.all_valid ? "PASS" : "FAIL") << "\n";
+
+      // Show individual failures
+      for(const auto& e : result.entries)
+      {
+        if(!e.file_exists)
+          std::cout << "  MISSING: " << e.filename << "\n";
+        else if(!e.hash_match)
+          std::cout << "  HASH MISMATCH: " << e.filename << "\n";
+        else if(!e.size_match)
+          std::cout << "  SIZE MISMATCH: " << e.filename << " (expected "
+                    << e.expected_size << ", got " << e.actual_size << ")\n";
+      }
+    }
+    return result.all_valid ? 0 : 1;
+  }
+
+  // === MXF-EXTRACT mode ===
+  if(mxf_extract_cmd->parsed())
+  {
+    dcpdoctor::MxfExtractOptions ex_opts;
+    ex_opts.input = mxf_input;
+    ex_opts.output_dir = mxf_output_dir;
+    ex_opts.extract_video = !mxf_no_video;
+    ex_opts.extract_audio = !mxf_no_audio;
+    ex_opts.start_frame = mxf_start;
+    ex_opts.end_frame = mxf_end;
+
+    auto result = dcpdoctor::extract_mxf(ex_opts);
+    if(!result.success)
+    {
+      std::cerr << "Error: " << result.error << "\n";
+      return 1;
+    }
+    std::cout << "Extracted " << result.extracted_files.size() << " file(s):\n";
+    for(const auto& f : result.extracted_files)
+      std::cout << "  " << f.string() << "\n";
+    if(result.frames_extracted > 0)
+      std::cout << "Frames: " << result.frames_extracted << "\n";
+    return 0;
+  }
+
+  // === AUTO-QC mode ===
+  if(auto_qc_cmd->parsed())
+  {
+    if(qc_video.empty() && qc_audio.empty())
+    {
+      std::cerr << "Error: specify --video and/or --audio\n";
+      return 2;
+    }
+
+    dcpdoctor::AutoQcOptions qc_opts;
+    qc_opts.video_path = qc_video;
+    qc_opts.audio_path = qc_audio;
+    qc_opts.black_threshold = qc_black_thresh;
+    qc_opts.freeze_threshold = qc_freeze_thresh;
+    qc_opts.silence_threshold = qc_silence_thresh;
+    qc_opts.clipping_threshold = qc_clip_thresh;
+
+    auto result = dcpdoctor::run_auto_qc(qc_opts);
+    if(!result.success)
+    {
+      std::cerr << "Error: " << result.error << "\n";
+      return 1;
+    }
+
+    if(qc_json_flag)
+    {
+      std::cout << dcpdoctor::auto_qc_to_json(result);
+    }
+    else
+    {
+      std::cout << "Auto QC Results:\n";
+      std::cout << "  Issues found: " << result.issues.size() << "\n\n";
+      for(const auto& issue : result.issues)
+      {
+        std::cout << "  [" << issue.severity << "] " << issue.description << "\n";
+      }
+      if(result.issues.empty())
+        std::cout << "  No issues detected.\n";
+    }
+    return result.issues.empty() ? 0 : 1;
   }
 
   // === VALIDATE mode (default) ===

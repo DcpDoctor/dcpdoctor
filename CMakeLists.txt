@@ -71,7 +71,10 @@ add_library(dcpdoctor_core STATIC
     src/quality.cpp
     src/photon.cpp
     src/premium.cpp
-    src/studio.cpp)
+    src/studio.cpp
+    src/checksum_verify.cpp
+    src/mxf_extract.cpp
+    src/auto_qc.cpp)
 
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include

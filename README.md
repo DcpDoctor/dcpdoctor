@@ -65,6 +65,9 @@ DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standa
 
 ### Advanced Tools
 - **DCP comparison/diff** — Side-by-side structural comparison of two DCPs
+- **Checksum verification** — Verify all PKL asset hashes and sizes (DCP or IMF)
+- **MXF essence extraction** — Extract video/audio tracks from MXF containers
+- **Automated QC** — Detect black frames, freeze frames, audio silence, and audio clipping
 - **Theater compatibility profiles** — Pre-built profiles for major server vendors:
   - Dolby IMS3000, IMS2000, Cinema (Premium)
   - Barco SP4K, SP2K
@@ -266,6 +269,52 @@ dcpdoctor --no-hashes /path/to/dcp
 dcpdoctor --no-signatures /path/to/dcp
 ```
 
+### Checksum Verification
+
+```bash
+# Verify all PKL checksums in a DCP or IMP
+dcpdoctor checksum-verify /path/to/dcp
+
+# JSON output
+dcpdoctor checksum-verify --json /path/to/dcp
+
+# Skip hash computation (just check sizes)
+dcpdoctor checksum-verify --no-hash /path/to/dcp
+
+# Stop on first mismatch
+dcpdoctor checksum-verify --stop-on-error /path/to/dcp
+```
+
+### MXF Extraction
+
+```bash
+# Extract all essence from an MXF file
+dcpdoctor mxf-extract /path/to/picture.mxf -o /output/dir
+
+# Extract only audio
+dcpdoctor mxf-extract /path/to/sound.mxf -o /output/dir --no-video
+
+# Extract specific frame range
+dcpdoctor mxf-extract /path/to/picture.mxf -o /output/dir --start-frame 100 --end-frame 200
+```
+
+### Automated QC
+
+```bash
+# Run full QC on a video file
+dcpdoctor auto-qc --video /path/to/content.mxf
+
+# QC with JSON output
+dcpdoctor auto-qc --video /path/to/video.mxf --audio /path/to/audio.wav --json
+
+# Custom thresholds
+dcpdoctor auto-qc --video /path/to/content.mxf \
+  --black-threshold 0.95 \
+  --freeze-threshold 0.005 \
+  --silence-threshold -50 \
+  --clipping-threshold -1.0
+```
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -375,11 +424,14 @@ dcpdoctor/
 │   ├── dcpdoctor.h       # Core types (Note, Code, VerifyResult, VerifyOptions)
 │   ├── advanced.h        # BV2.1, manifest, batch
 │   ├── audio.h           # Audio level analysis
+│   ├── auto_qc.h         # Automated QC (black/freeze/silence/clipping)
 │   ├── bitrate.h         # J2K bitrate stats
 │   ├── cache.h           # SQLite hash cache
+│   ├── checksum_verify.h # PKL hash/size verification
 │   ├── diff.h            # DCP comparison
 │   ├── fixes.h           # Fix suggestions
 │   ├── kdm.h             # KDM parsing/validation
+│   ├── mxf_extract.h     # MXF essence extraction
 │   ├── premium.h         # Netflix, HDR, Atmos, Accessibility
 │   ├── studio.h          # Studio-level checks (loudness, color, resolution)
 │   ├── report.h          # Output formatting + progress bar
