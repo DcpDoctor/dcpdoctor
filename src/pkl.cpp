@@ -22,7 +22,7 @@ static xmlNodePtr find_child(xmlNodePtr parent, const char* name) {
 }
 
 std::optional<Pkl> Pkl::parse(const std::filesystem::path& file) {
-    xmlDocPtr doc = xmlReadFile(file.c_str(), nullptr, XML_PARSE_NONET | XML_PARSE_NOBLANKS | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
+    xmlDocPtr doc = xmlReadFile(file.string().c_str(), nullptr, XML_PARSE_NONET | XML_PARSE_NOBLANKS | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return std::nullopt;
 
     xmlNodePtr root = xmlDocGetRootElement(doc);

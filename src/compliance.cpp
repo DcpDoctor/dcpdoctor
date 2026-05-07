@@ -105,7 +105,7 @@ void check_namespace(xmlNodePtr root, Standard standard,
 
 void check_cpl_compliance(const std::filesystem::path& cpl_path, Standard standard,
                           bool strict, std::vector<Note>& notes) {
-    xmlDocPtr doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    xmlDocPtr doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                                 XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return;
 
@@ -236,7 +236,7 @@ void check_cpl_compliance(const std::filesystem::path& cpl_path, Standard standa
 
 void check_pkl_compliance(const std::filesystem::path& pkl_path, Standard standard,
                           std::vector<Note>& notes) {
-    xmlDocPtr doc = xmlReadFile(pkl_path.c_str(), nullptr,
+    xmlDocPtr doc = xmlReadFile(pkl_path.string().c_str(), nullptr,
                                 XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return;
 
@@ -297,7 +297,7 @@ void check_pkl_compliance(const std::filesystem::path& pkl_path, Standard standa
 
 void check_assetmap_compliance(const std::filesystem::path& am_path, Standard standard,
                                std::vector<Note>& notes) {
-    xmlDocPtr doc = xmlReadFile(am_path.c_str(), nullptr,
+    xmlDocPtr doc = xmlReadFile(am_path.string().c_str(), nullptr,
                                 XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return;
 
@@ -389,7 +389,7 @@ std::vector<Note> check_smpte_compliance(const std::filesystem::path& dcp_dir,
         auto ext = entry.path().extension().string();
         if (ext != ".xml" && ext != ".XML") continue;
 
-        xmlDocPtr doc = xmlReadFile(entry.path().c_str(), nullptr,
+        xmlDocPtr doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                                     XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
         if (!doc) continue;
 

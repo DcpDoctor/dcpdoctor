@@ -8,7 +8,7 @@ std::vector<Note> validate_schema(const std::filesystem::path& xml_file,
                                   const std::filesystem::path& schema_file) {
     std::vector<Note> notes;
 
-    xmlDocPtr schema_doc = xmlReadFile(schema_file.c_str(), nullptr, XML_PARSE_NONET);
+    xmlDocPtr schema_doc = xmlReadFile(schema_file.string().c_str(), nullptr, XML_PARSE_NONET);
     if (!schema_doc) {
         notes.push_back({Severity::error, Code::xml_parse_error,
                          "Cannot read schema: " + schema_file.string(), schema_file});
@@ -28,7 +28,7 @@ std::vector<Note> validate_schema(const std::filesystem::path& xml_file,
 
     xmlSchemaValidCtxtPtr valid_ctx = xmlSchemaNewValidCtxt(schema);
 
-    xmlDocPtr doc = xmlReadFile(xml_file.c_str(), nullptr, XML_PARSE_NONET);
+    xmlDocPtr doc = xmlReadFile(xml_file.string().c_str(), nullptr, XML_PARSE_NONET);
     if (!doc) {
         notes.push_back({Severity::error, Code::xml_parse_error,
                          "Cannot parse XML: " + xml_file.string(), xml_file});
@@ -52,7 +52,7 @@ std::vector<Note> validate_namespace(const std::filesystem::path& xml_file,
                                      Standard expected) {
     std::vector<Note> notes;
 
-    xmlDocPtr doc = xmlReadFile(xml_file.c_str(), nullptr, XML_PARSE_NONET);
+    xmlDocPtr doc = xmlReadFile(xml_file.string().c_str(), nullptr, XML_PARSE_NONET);
     if (!doc) return notes;
 
     xmlNodePtr root = xmlDocGetRootElement(doc);

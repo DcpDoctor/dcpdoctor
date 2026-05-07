@@ -73,7 +73,7 @@ std::vector<Note> check_bv21_compliance(const fs::path& dcp_dir, Standard standa
         auto ext = entry.path().extension().string();
         if (ext != ".xml") continue;
 
-        auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 

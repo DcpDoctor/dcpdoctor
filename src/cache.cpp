@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 
 HashCache::HashCache(const fs::path& cache_path) {
     sqlite3* db = nullptr;
-    if (sqlite3_open(cache_path.c_str(), &db) == SQLITE_OK) {
+    if (sqlite3_open(cache_path.string().c_str(), &db) == SQLITE_OK) {
         db_ = db;
         const char* sql = "CREATE TABLE IF NOT EXISTS hashes ("
                          "path TEXT PRIMARY KEY, "

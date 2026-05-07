@@ -102,7 +102,7 @@ CertChainInfo validate_cert_chain(const fs::path& dcp_dir) {
     }
 
     // Try to read PEM certificates
-    FILE* fp = fopen(cert_path.c_str(), "r");
+    FILE* fp = fopen(cert_path.string().c_str(), "r");
     if (!fp) {
         info.error = "Cannot open certificate file";
         return info;

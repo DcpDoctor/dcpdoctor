@@ -78,6 +78,7 @@ target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_SOURCE_DIR}/extern/asdcplib/src)
 
 if(WIN32)
+    target_compile_definitions(dcpdoctor_core PUBLIC KM_WIN32)
     target_link_libraries(dcpdoctor_core PUBLIC
         LibXml2::LibXml2
         OpenSSL::SSL OpenSSL::Crypto

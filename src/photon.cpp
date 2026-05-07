@@ -1,4 +1,5 @@
 #include "dcpdoctor/photon.h"
+#include "dcpdoctor/platform.h"
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -65,14 +66,14 @@ bool build_photon(const PhotonConfig& config) {
     // Run gradle build
     std::string cmd = "cd " + config.photon_dir.string() +
                       " && ./gradlew build getDependencies -x test 2>&1";
-    auto* pipe = popen(cmd.c_str(), "r");
+    auto* pipe = DCPDOCTOR_POPEN(cmd.c_str(), "r");
     if (!pipe) return false;
 
     // Read output (discard for now)
     std::array<char, 4096> buf;
     while (fgets(buf.data(), buf.size(), pipe)) {}
 
-    int status = pclose(pipe);
+    int status = DCPDOCTOR_PCLOSE(pipe);
     return (status == 0);
 }
 
@@ -181,7 +182,7 @@ PhotonResult run_photon(const fs::path& imf_dir, const PhotonConfig& config) {
                       " 2>&1";
 
     // Execute with timeout
-    auto* pipe = popen(cmd.c_str(), "r");
+    auto* pipe = DCPDOCTOR_POPEN(cmd.c_str(), "r");
     if (!pipe) {
         result.error_message = "Failed to execute Photon (java not found?)";
         return result;
@@ -194,7 +195,7 @@ PhotonResult run_photon(const fs::path& imf_dir, const PhotonConfig& config) {
         output << buf.data();
     }
 
-    result.exit_code = pclose(pipe);
+    result.exit_code = DCPDOCTOR_PCLOSE(pipe);
     result.raw_output = output.str();
     result.success = true;
 

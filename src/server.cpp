@@ -1,9 +1,11 @@
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/report.h"
 #include <spdlog/spdlog.h>
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#endif
 #include <chrono>
 #include <set>
 #include <sstream>
@@ -50,6 +52,10 @@ void watch_directory(const fs::path& dir,
 // For production use, would integrate cpp-httplib or similar
 void serve_api(const std::string& bind_addr, int port,
                const VerifyOptions& default_opts) {
+#ifdef _WIN32
+    spdlog::error("REST API server is not yet supported on Windows");
+    return;
+#else
     spdlog::info("REST API server starting on {}:{}", bind_addr, port);
     spdlog::info("Endpoints:");
     spdlog::info("  POST /validate  - validate a DCP directory");
@@ -134,6 +140,7 @@ void serve_api(const std::string& bind_addr, int port,
     }
 
     close(server_fd);
+#endif // _WIN32
 }
 
 } // namespace dcpdoctor

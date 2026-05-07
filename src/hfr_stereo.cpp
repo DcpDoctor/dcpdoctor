@@ -54,7 +54,7 @@ double parse_edit_rate(const std::string& str) {
 std::vector<Note> check_hfr_compliance(const fs::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -128,7 +128,7 @@ MultiCplInfo analyze_multi_cpl(const fs::path& dcp_dir) {
         if (!entry.is_regular_file()) continue;
         if (entry.path().extension() != ".xml") continue;
 
-        auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 
@@ -179,7 +179,7 @@ MultiCplInfo analyze_multi_cpl(const fs::path& dcp_dir) {
 Stereo3dInfo analyze_stereo3d(const fs::path& cpl_path) {
     Stereo3dInfo info;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return info;
 
@@ -252,7 +252,7 @@ std::vector<CplChainEntry> trace_cpl_chain(const fs::path& dcp_dir) {
         if (!entry.is_regular_file()) continue;
         if (entry.path().extension() != ".xml") continue;
 
-        auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 

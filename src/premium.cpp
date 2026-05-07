@@ -84,7 +84,7 @@ void collect_ttml_entries(xmlNodePtr node, std::vector<TtmlTimingEntry>& entries
 TtmlInfo validate_ttml(const fs::path& ttml_path) {
     TtmlInfo info;
 
-    auto doc = xmlReadFile(ttml_path.c_str(), nullptr,
+    auto doc = xmlReadFile(ttml_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         info.error = "Failed to parse TTML XML";
@@ -503,7 +503,7 @@ NetflixDeliveryResult check_netflix_delivery(const fs::path& imf_dir) {
         if (!entry.is_regular_file()) continue;
         if (entry.path().extension() != ".xml") continue;
 
-        auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 
@@ -625,7 +625,7 @@ ProResInfo detect_prores(const fs::path& mxf_path) {
 std::vector<Note> check_extended_hfr(const fs::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -680,7 +680,7 @@ std::vector<Note> check_accessibility(const fs::path& package_dir) {
         if (!entry.is_regular_file()) continue;
         if (entry.path().extension() != ".xml") continue;
 
-        auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 

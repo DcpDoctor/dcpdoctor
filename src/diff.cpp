@@ -40,7 +40,7 @@ std::map<std::string, AssetEntry> parse_assetmap(const fs::path& dcp_dir) {
     else if (fs::exists(dcp_dir / "ASSETMAP")) am_path = dcp_dir / "ASSETMAP";
     else return assets;
 
-    auto doc = xmlReadFile(am_path.c_str(), nullptr,
+    auto doc = xmlReadFile(am_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return assets;
 

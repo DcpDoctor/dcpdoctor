@@ -57,7 +57,7 @@ ImfPackageInfo validate_imf_package(const fs::path& imf_dir) {
     info.has_assetmap = true;
 
     // Parse ASSETMAP
-    auto doc = xmlReadFile(assetmap_path.c_str(), nullptr,
+    auto doc = xmlReadFile(assetmap_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         info.error = "Failed to parse ASSETMAP";
@@ -121,7 +121,7 @@ ImfPackageInfo validate_imf_package(const fs::path& imf_dir) {
         if (entry.path().filename() == "ASSETMAP.xml" ||
             entry.path().filename() == "ASSETMAP") continue;
 
-        auto cpl_doc = xmlReadFile(entry.path().c_str(), nullptr,
+        auto cpl_doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                                   XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!cpl_doc) continue;
 

@@ -45,7 +45,7 @@ std::vector<Note> check_encryption(const std::filesystem::path& dcp_dir,
     namespace fs = std::filesystem;
 
     for (const auto& cpl_path : cpl_paths) {
-        auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+        auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 
@@ -94,7 +94,7 @@ std::vector<Note> check_encryption(const std::filesystem::path& dcp_dir,
 std::vector<Note> check_reel_continuity(const std::filesystem::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -156,7 +156,7 @@ std::vector<Note> check_reel_continuity(const std::filesystem::path& cpl_path) {
 std::vector<Note> check_stereo(const std::filesystem::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -215,7 +215,7 @@ std::vector<Note> check_stereo(const std::filesystem::path& cpl_path) {
 std::vector<Note> check_markers(const std::filesystem::path& cpl_path, bool strict) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -305,7 +305,7 @@ std::vector<Note> check_cross_references(const std::filesystem::path& dcp_dir,
     }
 
     for (const auto& cpl_path : cpl_paths) {
-        auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+        auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 
@@ -353,7 +353,7 @@ std::vector<Note> check_supplemental(const std::filesystem::path& dcp_dir,
     namespace fs = std::filesystem;
 
     for (const auto& cpl_path : cpl_paths) {
-        auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+        auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                               XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
         if (!doc) continue;
 
@@ -388,7 +388,7 @@ std::vector<Note> check_supplemental(const std::filesystem::path& dcp_dir,
 std::vector<Note> check_audio_channels(const std::filesystem::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 
@@ -428,7 +428,7 @@ std::vector<Note> check_audio_channels(const std::filesystem::path& cpl_path) {
 std::vector<Note> check_color_space(const std::filesystem::path& cpl_path) {
     std::vector<Note> notes;
 
-    auto doc = xmlReadFile(cpl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(cpl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return notes;
 

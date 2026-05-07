@@ -1,4 +1,5 @@
 #include "dcpdoctor/kdm_advanced.h"
+#include "dcpdoctor/platform.h"
 #include <libxml/parser.h>
 #include <ctime>
 #include <iomanip>
@@ -31,7 +32,7 @@ std::chrono::system_clock::time_point parse_iso_time(const std::string& str) {
     std::istringstream ss(str);
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     if (ss.fail()) return {};
-    return std::chrono::system_clock::from_time_t(timegm(&tm));
+    return std::chrono::system_clock::from_time_t(DCPDOCTOR_TIMEGM(&tm));
 }
 
 } // namespace
@@ -39,7 +40,7 @@ std::chrono::system_clock::time_point parse_iso_time(const std::string& str) {
 DkdmInfo parse_dkdm(const fs::path& dkdm_path) {
     DkdmInfo info;
 
-    auto doc = xmlReadFile(dkdm_path.c_str(), nullptr,
+    auto doc = xmlReadFile(dkdm_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         info.error = "Failed to parse DKDM XML";
@@ -110,7 +111,7 @@ std::vector<Note> validate_dkdm(const fs::path& dkdm_path) {
 std::vector<TdlEntry> load_trusted_device_list(const fs::path& tdl_path) {
     std::vector<TdlEntry> entries;
 
-    auto doc = xmlReadFile(tdl_path.c_str(), nullptr,
+    auto doc = xmlReadFile(tdl_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return entries;
 
@@ -152,7 +153,7 @@ std::vector<Note> validate_kdm_against_tdl(const fs::path& kdm_path,
     }
 
     // Parse KDM to get recipient certificate info
-    auto doc = xmlReadFile(kdm_path.c_str(), nullptr,
+    auto doc = xmlReadFile(kdm_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         notes.push_back(Note{Severity::error, Code::encryption_detected,
@@ -228,7 +229,7 @@ TimezoneKdmResult check_kdm_timezone(const fs::path& kdm_path, int utc_offset_ho
     TimezoneKdmResult result;
     result.utc_offset_hours = utc_offset_hours;
 
-    auto doc = xmlReadFile(kdm_path.c_str(), nullptr,
+    auto doc = xmlReadFile(kdm_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) return result;
 

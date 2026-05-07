@@ -1,4 +1,5 @@
 #include "dcpdoctor/kdm.h"
+#include "dcpdoctor/platform.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <ctime>
@@ -31,7 +32,7 @@ std::chrono::system_clock::time_point parse_iso8601(const std::string& str) {
     std::istringstream ss(str);
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     if (ss.fail()) return {};
-    return std::chrono::system_clock::from_time_t(timegm(&tm));
+    return std::chrono::system_clock::from_time_t(DCPDOCTOR_TIMEGM(&tm));
 }
 
 } // namespace
@@ -39,7 +40,7 @@ std::chrono::system_clock::time_point parse_iso8601(const std::string& str) {
 KdmInfo parse_kdm(const fs::path& kdm_path) {
     KdmInfo info;
 
-    auto doc = xmlReadFile(kdm_path.c_str(), nullptr,
+    auto doc = xmlReadFile(kdm_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         info.error = "Failed to parse KDM XML";
@@ -116,7 +117,7 @@ std::vector<Note> validate_kdm(const fs::path& kdm_path, const fs::path& dcp_dir
             if (!entry.is_regular_file()) continue;
             if (entry.path().extension() != ".xml") continue;
 
-            auto doc = xmlReadFile(entry.path().c_str(), nullptr,
+            auto doc = xmlReadFile(entry.path().string().c_str(), nullptr,
                                   XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
             if (!doc) continue;
             auto root = xmlDocGetRootElement(doc);

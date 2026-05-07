@@ -114,7 +114,7 @@ std::vector<Note> validate_subtitle(const std::filesystem::path& xml_path,
     ctx.standard = standard;
     ctx.path = xml_path;
 
-    auto doc = xmlReadFile(xml_path.c_str(), nullptr,
+    auto doc = xmlReadFile(xml_path.string().c_str(), nullptr,
                           XML_PARSE_NOERROR | XML_PARSE_NOWARNING | XML_PARSE_NONET);
     if (!doc) {
         ctx.notes.push_back({Severity::error, Code::subtitle_parse_error,

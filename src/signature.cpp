@@ -125,7 +125,7 @@ const EVP_MD* get_digest_from_uri(const std::string& uri) {
 std::vector<Note> verify_signature(const std::filesystem::path& xml_file) {
     std::vector<Note> notes;
 
-    xmlDocPtr doc = xmlReadFile(xml_file.c_str(), nullptr,
+    xmlDocPtr doc = xmlReadFile(xml_file.string().c_str(), nullptr,
                                 XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return notes;
 
@@ -302,7 +302,7 @@ std::vector<Note> verify_signature(const std::filesystem::path& xml_file) {
 std::vector<Note> verify_certificate_chain(const std::filesystem::path& xml_file) {
     std::vector<Note> notes;
 
-    xmlDocPtr doc = xmlReadFile(xml_file.c_str(), nullptr,
+    xmlDocPtr doc = xmlReadFile(xml_file.string().c_str(), nullptr,
                                 XML_PARSE_NONET | XML_PARSE_NOERROR | XML_PARSE_NOWARNING);
     if (!doc) return notes;
 
