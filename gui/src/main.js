@@ -1,4 +1,4 @@
-const { invoke } = window.__TAURI__?.core ?? {};
+import { invoke } from "@tauri-apps/api/core";
 
 // ── DOM Elements ──────────────────────────────────
 const dropZone = document.getElementById("drop-zone");
@@ -22,7 +22,6 @@ const versionLabel = document.getElementById("version-label");
 
 // ── Version ───────────────────────────────────────
 async function loadVersion() {
-  if (!invoke) return;
   try {
     const ver = await invoke("get_version");
     versionLabel.textContent = ver;
@@ -98,15 +97,6 @@ async function runValidation() {
   progressText.textContent = "Validating DCP...";
 
   try {
-    if (!invoke) {
-      // Dev mode without Tauri — show demo results
-      progressFill.style.width = "100%";
-      progressText.textContent = "Complete";
-      await sleep(500);
-      showResults(getDemoResults());
-      return;
-    }
-
     progressFill.style.width = "60%";
     progressText.textContent = "Running checks...";
 

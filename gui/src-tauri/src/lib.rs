@@ -18,20 +18,26 @@ pub struct ValidationResponse {
 
 fn find_dcpdoctor_binary() -> String {
     // Look for the binary in common locations
-    let candidates = [
-        // Sidecar (bundled with Tauri)
+    let candidates = vec![
+        // Sidecar (bundled with Tauri — next to the executable)
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.join("dcpdoctor")))
             .unwrap_or_default(),
-        // Build directory (development)
+        // Build directory relative to project root (development)
+        std::path::PathBuf::from("../../build/dcpdoctor"),
         std::path::PathBuf::from("../build/dcpdoctor"),
+        std::path::PathBuf::from("build/dcpdoctor"),
+        // Common system PATH
         std::path::PathBuf::from("dcpdoctor"),
     ];
 
     for candidate in &candidates {
         if candidate.exists() {
-            return candidate.to_string_lossy().to_string();
+            return candidate.canonicalize()
+                .unwrap_or_else(|_| candidate.clone())
+                .to_string_lossy()
+                .to_string();
         }
     }
 
@@ -47,8 +53,9 @@ fn parse_output(output: &str) -> Vec<ValidationResult> {
             continue;
         }
 
-        // Parse lines like: [ERROR] (code) message | file
-        // or:                [WARN]  (code) message | file
+        // Parse lines like: [ERROR] code - message (file)
+        // or:                [WARNING] code - message (file)
+        // or:                [INFO] code - message (file)
         let severity = if line.starts_with("[ERROR]") {
             "error"
         } else if line.starts_with("[WARN]") || line.starts_with("[WARNING]") {
@@ -66,18 +73,20 @@ fn parse_output(output: &str) -> Vec<ValidationResult> {
             .trim_start_matches("[INFO]")
             .trim();
 
-        let (code, rest) = if rest.starts_with('(') {
-            if let Some(end) = rest.find(')') {
-                (&rest[1..end], rest[end + 1..].trim())
-            } else {
-                ("unknown", rest)
-            }
+        // Format: "code - message (file)"
+        let (code, rest) = if let Some(dash_pos) = rest.find(" - ") {
+            (&rest[..dash_pos], &rest[dash_pos + 3..])
         } else {
             ("unknown", rest)
         };
 
-        let (message, file) = if let Some(pipe_pos) = rest.rfind('|') {
-            (rest[..pipe_pos].trim(), rest[pipe_pos + 1..].trim())
+        // Extract file from trailing parentheses: "message (file)"
+        let (message, file) = if let Some(paren_pos) = rest.rfind(" (") {
+            if rest.ends_with(')') {
+                (&rest[..paren_pos], &rest[paren_pos + 2..rest.len() - 1])
+            } else {
+                (rest, "")
+            }
         } else {
             (rest, "")
         };
