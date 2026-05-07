@@ -4,14 +4,16 @@
 #include <string>
 #include <vector>
 
-namespace dcpdoctor {
+namespace dcpdoctor
+{
 
 /// A suggested fix for a detected issue
-struct FixSuggestion {
-    Code related_code;
-    std::string description;    // Human-readable explanation
-    std::string command;        // Optional CLI command to fix (empty if manual)
-    bool auto_fixable = false;  // Whether dcpdoctor can fix it automatically
+struct FixSuggestion
+{
+  Code related_code;
+  std::string description; // Human-readable explanation
+  std::string command; // Optional CLI command to fix (empty if manual)
+  bool auto_fixable = false; // Whether dcpdoctor can fix it automatically
 };
 
 /// Generate fix suggestions for a set of notes

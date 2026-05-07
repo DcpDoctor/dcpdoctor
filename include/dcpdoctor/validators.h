@@ -5,11 +5,12 @@
 #include <string>
 #include <vector>
 
-namespace dcpdoctor {
+namespace dcpdoctor
+{
 
 /// Detect encrypted content and KDM requirements
 std::vector<Note> check_encryption(const std::filesystem::path& dcp_dir,
-                                    const std::vector<std::filesystem::path>& cpl_paths);
+                                   const std::vector<std::filesystem::path>& cpl_paths);
 
 /// Check reel continuity (entry points, durations match across reels)
 std::vector<Note> check_reel_continuity(const std::filesystem::path& cpl_path);
@@ -22,12 +23,12 @@ std::vector<Note> check_markers(const std::filesystem::path& cpl_path, bool stri
 
 /// Cross-reference integrity: all UUIDs in CPL reference assets in PKL/ASSETMAP
 std::vector<Note> check_cross_references(const std::filesystem::path& dcp_dir,
-                                          const std::vector<std::string>& known_asset_ids,
-                                          const std::vector<std::filesystem::path>& cpl_paths);
+                                         const std::vector<std::string>& known_asset_ids,
+                                         const std::vector<std::filesystem::path>& cpl_paths);
 
 /// Supplemental DCP: check OPL references
 std::vector<Note> check_supplemental(const std::filesystem::path& dcp_dir,
-                                      const std::vector<std::filesystem::path>& cpl_paths);
+                                     const std::vector<std::filesystem::path>& cpl_paths);
 
 /// Audio channel labeling (SMPTE 429-2 channel assignments)
 std::vector<Note> check_audio_channels(const std::filesystem::path& cpl_path);

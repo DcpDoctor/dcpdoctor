@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-namespace dcpdoctor {
+namespace dcpdoctor
+{
 
 /// Verify XML digital signature
 std::vector<Note> verify_signature(const std::filesystem::path& xml_file);

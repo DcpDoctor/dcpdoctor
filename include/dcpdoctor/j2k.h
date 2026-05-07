@@ -4,28 +4,28 @@
 #include <filesystem>
 #include <vector>
 
-namespace dcpdoctor {
+namespace dcpdoctor
+{
 
 /// Check J2K bitrate compliance using file size and frame metadata
 /// Returns notes for any bitrate violations
-std::vector<Note> check_j2k_bitrate(const std::filesystem::path& mxf_path,
-                                     uint64_t frame_count,
-                                     uint32_t frame_rate_num,
-                                     uint32_t frame_rate_den,
-                                     uint32_t width, uint32_t height);
+std::vector<Note> check_j2k_bitrate(const std::filesystem::path& mxf_path, uint64_t frame_count,
+                                    uint32_t frame_rate_num, uint32_t frame_rate_den,
+                                    uint32_t width, uint32_t height);
 
 /// Validate J2K codestream header markers (SOC, SIZ, COD)
 /// Uses Grok library if available, otherwise parses raw markers
-struct J2kInfo {
-    bool valid = false;
-    uint32_t width = 0;
-    uint32_t height = 0;
-    uint8_t num_components = 0;
-    uint8_t bit_depth = 0;
-    uint8_t num_resolutions = 0;
-    bool irreversible = false;  // true = lossy (9/7), false = lossless (5/3)
-    uint16_t rsiz = 0;         // Profile marker (Cinema2K, Cinema4K, etc.)
-    std::string error;
+struct J2kInfo
+{
+  bool valid = false;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint8_t num_components = 0;
+  uint8_t bit_depth = 0;
+  uint8_t num_resolutions = 0;
+  bool irreversible = false; // true = lossy (9/7), false = lossless (5/3)
+  uint16_t rsiz = 0; // Profile marker (Cinema2K, Cinema4K, etc.)
+  std::string error;
 };
 
 /// Parse a raw J2K codestream header (from first frame in MXF)
