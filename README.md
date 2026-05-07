@@ -288,6 +288,85 @@ cd build
 # 135/135 tests passed
 ```
 
+### Studio Validation
+
+```bash
+# Studio-level checks (loudness, color, resolution, encryption, subtitles)
+dcpdoctor --studio /path/to/dcp
+
+# Deep per-MXF analysis (color space, bit depth, resolution per file)
+dcpdoctor --studio --deep /path/to/dcp
+
+# Netflix IMF delivery spec check
+dcpdoctor --netflix /path/to/imf
+
+# HDR metadata detection
+dcpdoctor --hdr /path/to/dcp
+
+# Dolby Atmos IAB deep inspection
+dcpdoctor --atmos /path/to/dcp
+
+# Accessibility track validation (AD/HI/CC)
+dcpdoctor --accessibility /path/to/dcp
+```
+
+## Desktop GUI (Tauri)
+
+DcpDoctor includes an optional desktop GUI built with [Tauri](https://tauri.app), providing a modern native interface for DCP validation.
+
+### GUI Features
+
+- **Drag & drop** — Drop a DCP folder to validate
+- **Visual results** — Color-coded severity badges (error/warning/info)
+- **Filterable table** — Filter results by severity
+- **Option chips** — Toggle Studio, Deep, Netflix, HDR, Atmos, IMF, Accessibility checks
+- **Cross-platform** — Builds for Linux (.deb, .rpm, AppImage), macOS (.dmg), Windows (.msi)
+- **Sidecar architecture** — Bundles the `dcpdoctor` CLI binary, no separate install needed
+
+### GUI Prerequisites
+
+In addition to the core build dependencies:
+
+| Dependency | Platform | Install |
+|---|---|---|
+| Rust 1.70+ | All | [rustup.rs](https://rustup.rs) |
+| Node.js 18+ | All | [nodejs.org](https://nodejs.org) |
+| webkit2gtk-4.1 | Linux | `sudo dnf install webkit2gtk4.1-devel` (Fedora) / `sudo apt install libwebkit2gtk-4.1-dev` (Debian) |
+| librsvg2 | Linux | `sudo dnf install librsvg2-devel` (Fedora) / `sudo apt install librsvg2-dev` (Debian) |
+| gtk3 | Linux | `sudo dnf install gtk3-devel` (Fedora) / `sudo apt install libgtk-3-dev` (Debian) |
+| libsoup3 | Linux | `sudo dnf install libsoup3-devel` (Fedora) / `sudo apt install libsoup-3.0-dev` (Debian) |
+
+### Build the GUI
+
+```bash
+# First, build the CLI (needed as sidecar)
+cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
+cd ..
+
+# Copy CLI binary as sidecar
+cp build/dcpdoctor gui/src-tauri/dcpdoctor-$(rustc -vV | grep host | cut -d' ' -f2)
+
+# Install frontend dependencies
+cd gui && npm install
+
+# Build the desktop app
+npx tauri build
+```
+
+Built packages are in `gui/src-tauri/target/release/bundle/`:
+- **Linux:** `.deb`, `.rpm`, `.AppImage`
+- **macOS:** `.dmg`
+- **Windows:** `.msi`
+
+### Development Mode
+
+```bash
+cd gui
+npx tauri dev
+```
+
+This starts a hot-reloading dev server — edit `gui/src/` files and see changes live.
+
 ## Architecture
 
 ```
@@ -301,13 +380,20 @@ dcpdoctor/
 │   ├── diff.h            # DCP comparison
 │   ├── fixes.h           # Fix suggestions
 │   ├── kdm.h             # KDM parsing/validation
+│   ├── premium.h         # Netflix, HDR, Atmos, Accessibility
+│   ├── studio.h          # Studio-level checks (loudness, color, resolution)
 │   ├── report.h          # Output formatting + progress bar
 │   ├── server.h          # REST API + watch
 │   ├── theater.h         # Theater compatibility profiles
 │   └── timeline.h        # SVG timeline + audio sync
 ├── src/                  # Implementation
 ├── tests/                # Unit tests (135 assertions)
-└── extern/               # Git submodules (CLI11, spdlog, asdcplib)
+├── gui/                  # Tauri desktop GUI
+│   ├── src/              # Web frontend (HTML/CSS/JS)
+│   ├── src-tauri/        # Rust backend (IPC commands)
+│   └── package.json      # Node.js dependencies
+├── docs/                 # GitHub Pages website
+└── extern/               # Git submodules (CLI11, spdlog, asdcplib, photon)
 ```
 
 ## License

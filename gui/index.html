@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DcpDoctor</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Title Bar -->
+    <header class="titlebar" data-tauri-drag-region>
+      <div class="titlebar-left">
+        <span class="logo">⚕</span>
+        <span class="app-name">DcpDoctor</span>
+        <span class="version" id="version-label"></span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Drop Zone / Path Input -->
+      <section class="input-section">
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-icon">📁</div>
+          <h2>Drop a DCP folder here</h2>
+          <p>or click to browse</p>
+          <input type="file" id="folder-input" webkitdirectory directory hidden />
+        </div>
+
+        <div class="path-bar">
+          <input type="text" id="dcp-path" placeholder="/path/to/your/DCP" spellcheck="false" />
+          <button class="btn btn-primary" id="btn-validate">Validate</button>
+        </div>
+      </section>
+
+      <!-- Options -->
+      <section class="options-section">
+        <h3>Validation Options</h3>
+        <div class="options-grid">
+          <label class="option-chip">
+            <input type="checkbox" value="--studio" checked />
+            <span>Studio</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--deep" />
+            <span>Deep Scan</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--netflix" />
+            <span>Netflix</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--imf" />
+            <span>IMF</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--hdr" />
+            <span>HDR</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--atmos" />
+            <span>Atmos</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" value="--accessibility" />
+            <span>Accessibility</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Progress -->
+      <section class="progress-section hidden" id="progress-section">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <p class="progress-text" id="progress-text">Validating...</p>
+      </section>
+
+      <!-- Results -->
+      <section class="results-section hidden" id="results-section">
+        <!-- Summary -->
+        <div class="summary-card" id="summary-card">
+          <div class="summary-icon" id="summary-icon">✓</div>
+          <div class="summary-text">
+            <h2 id="summary-title">Validation Complete</h2>
+            <p id="summary-detail"></p>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row" id="stats-row">
+          <div class="stat-box stat-error">
+            <span class="stat-num" id="stat-errors">0</span>
+            <span class="stat-label">Errors</span>
+          </div>
+          <div class="stat-box stat-warn">
+            <span class="stat-num" id="stat-warnings">0</span>
+            <span class="stat-label">Warnings</span>
+          </div>
+          <div class="stat-box stat-info">
+            <span class="stat-num" id="stat-info">0</span>
+            <span class="stat-label">Info</span>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="error">Errors</button>
+          <button class="filter-tab" data-filter="warning">Warnings</button>
+          <button class="filter-tab" data-filter="info">Info</button>
+        </div>
+
+        <!-- Results Table -->
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Code</th>
+                <th>Message</th>
+                <th>File</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+          <div class="no-results hidden" id="no-results">
+            <p>No issues found — DCP is valid!</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,1 +1,7 @@
 build/
+
+# Tauri GUI
+gui/node_modules/
+gui/dist/
+gui/src-tauri/target/
+gui/src-tauri/dcpdoctor-*
