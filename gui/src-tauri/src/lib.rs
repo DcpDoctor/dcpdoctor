@@ -104,6 +104,9 @@ fn parse_output(output: &str) -> Vec<ValidationResult> {
 #[tauri::command]
 fn validate_dcp(path: String, flags: Vec<String>) -> Result<ValidationResponse, String> {
     let binary = find_dcpdoctor_binary();
+    eprintln!("[dcpdoctor-gui] binary: {}", binary);
+    eprintln!("[dcpdoctor-gui] cwd: {:?}", std::env::current_dir());
+    eprintln!("[dcpdoctor-gui] validating: {}", path);
 
     let mut cmd = Command::new(&binary);
     cmd.arg(&path);
@@ -113,7 +116,8 @@ fn validate_dcp(path: String, flags: Vec<String>) -> Result<ValidationResponse, 
 
     let output = cmd.output().map_err(|e| {
         format!(
-            "Failed to run dcpdoctor binary at '{}': {}",
+            "Failed to run dcpdoctor binary at '{}': {}. \
+             Make sure dcpdoctor is built (cd build && make).",
             binary, e
         )
     })?;
@@ -121,6 +125,7 @@ fn validate_dcp(path: String, flags: Vec<String>) -> Result<ValidationResponse, 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let combined = format!("{}\n{}", stdout, stderr);
+    eprintln!("[dcpdoctor-gui] exit: {:?}, stdout: {}", output.status.code(), stdout.trim());
 
     let results = parse_output(&combined);
     let exit_code = output.status.code().unwrap_or(-1);
@@ -128,8 +133,11 @@ fn validate_dcp(path: String, flags: Vec<String>) -> Result<ValidationResponse, 
     let errors = results.iter().filter(|r| r.severity == "error").count();
     let warnings = results.iter().filter(|r| r.severity == "warning").count();
 
-    let summary = if results.is_empty() && exit_code == 0 {
+    let summary = if errors == 0 && warnings == 0 && exit_code == 0 {
         "DCP is valid — no issues found.".to_string()
+    } else if results.is_empty() && exit_code != 0 {
+        // Binary ran but we couldn't parse output — show raw output
+        format!("Validation failed (exit {}): {}", exit_code, combined.trim())
     } else {
         format!(
             "{} error(s), {} warning(s) found.",
@@ -150,7 +158,7 @@ fn get_version() -> Result<String, String> {
     let output = Command::new(&binary)
         .arg("--version")
         .output()
-        .map_err(|e| format!("Failed to run dcpdoctor: {}", e))?;
+        .map_err(|e| format!("Failed to run dcpdoctor at '{}': {} (cwd: {:?})", binary, e, std::env::current_dir()))?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
