@@ -167,6 +167,7 @@ fn get_version() -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![validate_dcp, get_version])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

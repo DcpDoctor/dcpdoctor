@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 // ── DOM Elements ──────────────────────────────────
 const dropZone = document.getElementById("drop-zone");
@@ -32,7 +34,12 @@ async function loadVersion() {
 loadVersion();
 
 // ── Drop Zone ─────────────────────────────────────
-dropZone.addEventListener("click", () => folderInput.click());
+dropZone.addEventListener("click", async () => {
+  const selected = await open({ directory: true, title: "Select DCP folder" });
+  if (selected) {
+    dcpPath.value = selected;
+  }
+});
 
 dropZone.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -43,28 +50,27 @@ dropZone.addEventListener("dragleave", () => {
   dropZone.classList.remove("drag-over");
 });
 
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("drag-over");
-  const items = e.dataTransfer?.items;
-  if (items && items.length > 0) {
-    // In Tauri, we get file paths from the drop
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      // Use the path of the first dropped item
-      dcpPath.value = files[0].path || files[0].name;
+// Use Tauri's native drag-drop event to get real filesystem paths
+getCurrentWindow().onDragDropEvent((event) => {
+  if (event.payload.type === "over") {
+    dropZone.classList.add("drag-over");
+  } else if (event.payload.type === "leave") {
+    dropZone.classList.remove("drag-over");
+  } else if (event.payload.type === "drop") {
+    dropZone.classList.remove("drag-over");
+    if (event.payload.paths && event.payload.paths.length > 0) {
+      dcpPath.value = event.payload.paths[0];
     }
   }
 });
 
-folderInput.addEventListener("change", (e) => {
-  const files = e.target.files;
-  if (files && files.length > 0) {
-    // Extract directory path from first file
-    const path = files[0].webkitRelativePath || files[0].name;
-    const dir = path.split("/")[0];
-    dcpPath.value = dir;
-  }
+// Prevent default browser drop behavior
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+});
+
+folderInput.addEventListener("change", () => {
+  // Unused — folder selection now uses native dialog
 });
 
 // ── Validation ────────────────────────────────────
