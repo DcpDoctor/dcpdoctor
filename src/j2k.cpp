@@ -1,6 +1,7 @@
-#include "dcpdoctor/j2k.h"
 #include <cstring>
 #include <fstream>
+
+#include "dcpdoctor/j2k.h"
 
 namespace dcpdoctor
 {

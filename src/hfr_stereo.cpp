@@ -1,9 +1,10 @@
-#include "dcpdoctor/hfr_stereo.h"
 #include <libxml/parser.h>
 #include <functional>
 #include <sstream>
 #include <set>
 #include <map>
+
+#include "dcpdoctor/hfr_stereo.h"
 
 namespace dcpdoctor
 {

@@ -1,10 +1,11 @@
-#include "dcpdoctor/kdm.h"
-#include "dcpdoctor/platform.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+
+#include "dcpdoctor/kdm.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

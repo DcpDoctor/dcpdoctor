@@ -1,11 +1,11 @@
+#include <spdlog/spdlog.h>
+#include <cstdio>
+#include <filesystem>
+
 #include "dcpdoctor/imf_compliance.h"
 #include "dcpdoctor/info.h"
 #include "dcpdoctor/loudness.h"
 #include "dcpdoctor/platform.h"
-#include <spdlog/spdlog.h>
-
-#include <cstdio>
-#include <filesystem>
 
 namespace fs = std::filesystem;
 

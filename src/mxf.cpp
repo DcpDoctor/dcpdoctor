@@ -1,9 +1,10 @@
-#include "dcpdoctor/mxf.h"
 #include <array>
 #include <cstring>
 #include <fstream>
 #include <vector>
 #include <algorithm>
+
+#include "dcpdoctor/mxf.h"
 
 namespace dcpdoctor
 {

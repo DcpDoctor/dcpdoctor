@@ -1,10 +1,11 @@
-#include "dcpdoctor/validators.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 #include <algorithm>
 #include <set>
 #include <string>
+
+#include "dcpdoctor/validators.h"
 
 namespace dcpdoctor
 {

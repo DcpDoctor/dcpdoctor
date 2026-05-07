@@ -1,4 +1,3 @@
-#include "dcpdoctor/quality.h"
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
@@ -8,6 +7,8 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+
+#include "dcpdoctor/quality.h"
 
 namespace dcpdoctor
 {

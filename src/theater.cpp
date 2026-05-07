@@ -1,6 +1,7 @@
-#include "dcpdoctor/theater.h"
 #include <algorithm>
 #include <cctype>
+
+#include "dcpdoctor/theater.h"
 
 namespace dcpdoctor
 {

@@ -1,9 +1,10 @@
-#include "dcpdoctor/compliance.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <cstring>
 #include <regex>
 #include <set>
+
+#include "dcpdoctor/compliance.h"
 
 namespace dcpdoctor
 {

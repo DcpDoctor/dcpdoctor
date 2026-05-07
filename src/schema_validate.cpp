@@ -1,11 +1,12 @@
-#include "dcpdoctor/schema_validate.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <array>
 #include <fstream>
 #include <regex>
 #include <sstream>
 #include <string>
+
+#include "dcpdoctor/schema_validate.h"
+#include "dcpdoctor/platform.h"
 
 namespace fs = std::filesystem;
 

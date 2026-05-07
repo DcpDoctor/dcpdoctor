@@ -1,3 +1,12 @@
+#include <CLI/CLI.hpp>
+#include <spdlog/spdlog.h>
+#include <libxml/parser.h>
+#include <libxml/xmlerror.h>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "dcpdoctor/dcpdoctor.h"
 #include "dcpdoctor/advanced.h"
 #include "dcpdoctor/auto_qc.h"
@@ -23,15 +32,6 @@
 #include "dcpdoctor/theater.h"
 #include "dcpdoctor/timeline.h"
 #include "dcpdoctor/validate.h"
-#include <CLI/CLI.hpp>
-#include <spdlog/spdlog.h>
-#include <libxml/parser.h>
-#include <libxml/xmlerror.h>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -337,7 +337,9 @@ int main(int argc, char* argv[])
           std::string status = result.ok() ? "PASS" : "FAIL";
           spdlog::info("{}: {} ({} errors, {} warnings)", path.string(), status, result.error_count,
                        result.warning_count);
-          dcpdoctor::write_report(result, path, std::cout, dcpdoctor::ReportFormat::text);
+          std::ostringstream oss;
+          dcpdoctor::write_report(result, path, oss, dcpdoctor::ReportFormat::text);
+          spdlog::info("{}", oss.str());
         },
         poll_interval);
     return 0;
@@ -358,7 +360,9 @@ int main(int argc, char* argv[])
   if(diff_cmd->parsed())
   {
     auto diff = dcpdoctor::compare_dcps(fs::path(diff_a), fs::path(diff_b), diff_hashes);
-    dcpdoctor::write_diff_report(std::cout, diff);
+    std::ostringstream oss;
+    dcpdoctor::write_diff_report(oss, diff);
+    spdlog::info("{}", oss.str());
     return diff.content_identical ? 0 : 1;
   }
 
@@ -369,14 +373,15 @@ int main(int argc, char* argv[])
     {
       // List all profiles
       auto profiles = dcpdoctor::get_theater_profiles();
-      std::cout << "Theater Compatibility Profiles:\n\n";
+      spdlog::info("Theater Compatibility Profiles:\n");
       for(const auto& p : profiles)
       {
-        std::cout << "  " << p.name << " (" << p.vendor << ")\n";
-        std::cout << "    4K: " << (p.supports_4k ? "Yes" : "No")
-                  << "  HFR: " << (p.supports_hfr ? "Yes" : "No")
-                  << "  Atmos: " << (p.supports_atmos ? "Yes" : "No")
-                  << "  Interop: " << (p.supports_interop ? "Yes" : "No") << "\n";
+        spdlog::info("  {} ({})", p.name, p.vendor);
+        spdlog::info("    4K: {}  HFR: {}  Atmos: {}  Interop: {}",
+                     p.supports_4k ? "Yes" : "No",
+                     p.supports_hfr ? "Yes" : "No",
+                     p.supports_atmos ? "Yes" : "No",
+                     p.supports_interop ? "Yes" : "No");
       }
     }
     else if(!profile_dcp.empty())
@@ -384,20 +389,20 @@ int main(int argc, char* argv[])
       auto* profile = dcpdoctor::find_profile(profile_name);
       if(!profile)
       {
-        std::cerr << "Unknown profile: " << profile_name << "\n";
+        spdlog::error("Unknown profile: {}", profile_name);
         return 2;
       }
       auto result = dcpdoctor::verify(fs::path(profile_dcp));
       auto notes = dcpdoctor::check_theater_compatibility(fs::path(profile_dcp), result, *profile);
-      std::cout << "Theater compatibility: " << profile->name << "\n\n";
+      spdlog::info("Theater compatibility: {}\n", profile->name);
       for(const auto& n : notes)
-        std::cout << "[" << n.severity_str() << "] " << n.message << "\n";
+        spdlog::info("[{}] {}", n.severity_str(), n.message);
       if(notes.empty())
-        std::cout << "No compatibility issues detected.\n";
+        spdlog::info("No compatibility issues detected.");
     }
     else
     {
-      std::cerr << "Use --check PROFILE --dcp DIR to check compatibility\n";
+      spdlog::error("Use --check PROFILE --dcp DIR to check compatibility");
       return 2;
     }
     return 0;
@@ -409,25 +414,24 @@ int main(int argc, char* argv[])
     auto info = dcpdoctor::parse_kdm(fs::path(kdm_file));
     if(!info.valid)
     {
-      std::cerr << "Invalid KDM: " << info.error << "\n";
+      spdlog::error("Invalid KDM: {}", info.error);
       return 1;
     }
-    std::cout << "KDM Information:\n";
-    std::cout << "  Content: " << info.content_title << "\n";
-    std::cout << "  CPL ID:  " << info.cpl_id << "\n";
-    std::cout << "  Status:  "
-              << (info.is_expired         ? "EXPIRED"
-                  : info.is_not_yet_valid ? "NOT YET VALID"
-                                          : "VALID")
-              << "\n";
+    spdlog::info("KDM Information:");
+    spdlog::info("  Content: {}", info.content_title);
+    spdlog::info("  CPL ID:  {}", info.cpl_id);
+    spdlog::info("  Status:  {}",
+              info.is_expired         ? "EXPIRED"
+              : info.is_not_yet_valid ? "NOT YET VALID"
+                                      : "VALID");
 
     if(!kdm_dcp.empty())
     {
       auto notes = dcpdoctor::validate_kdm(fs::path(kdm_file), fs::path(kdm_dcp));
       for(const auto& n : notes)
-        std::cout << "[" << n.severity_str() << "] " << n.message << "\n";
+        spdlog::info("[{}] {}", n.severity_str(), n.message);
       if(notes.empty())
-        std::cout << "\nKDM validates against DCP.\n";
+        spdlog::info("\nKDM validates against DCP.");
     }
     return 0;
   }
@@ -444,44 +448,44 @@ int main(int argc, char* argv[])
     auto result = dcpdoctor::verify_package_checksums(cv_opts);
     if(!result.success)
     {
-      std::cerr << "Error: " << result.error << "\n";
+      spdlog::error("Error: {}", result.error);
       return 1;
     }
 
     if(checksum_json)
     {
-      std::cout << "{\n";
-      std::cout << "  \"total\": " << result.total_assets << ",\n";
-      std::cout << "  \"verified_ok\": " << result.verified_ok << ",\n";
-      std::cout << "  \"hash_mismatches\": " << result.hash_mismatches << ",\n";
-      std::cout << "  \"size_mismatches\": " << result.size_mismatches << ",\n";
-      std::cout << "  \"missing_files\": " << result.missing_files << ",\n";
-      std::cout << "  \"all_valid\": " << (result.all_valid ? "true" : "false") << "\n";
-      std::cout << "}\n";
+      spdlog::info("{{");
+      spdlog::info("  \"total\": {},", result.total_assets);
+      spdlog::info("  \"verified_ok\": {},", result.verified_ok);
+      spdlog::info("  \"hash_mismatches\": {},", result.hash_mismatches);
+      spdlog::info("  \"size_mismatches\": {},", result.size_mismatches);
+      spdlog::info("  \"missing_files\": {},", result.missing_files);
+      spdlog::info("  \"all_valid\": {}", result.all_valid ? "true" : "false");
+      spdlog::info("}}");
     }
     else
     {
-      std::cout << "Checksum Verification: " << checksum_dir << "\n";
-      std::cout << "  Total assets: " << result.total_assets << "\n";
-      std::cout << "  Verified OK:  " << result.verified_ok << "\n";
+      spdlog::info("Checksum Verification: {}", checksum_dir);
+      spdlog::info("  Total assets: {}", result.total_assets);
+      spdlog::info("  Verified OK:  {}", result.verified_ok);
       if(result.hash_mismatches > 0)
-        std::cout << "  Hash mismatches: " << result.hash_mismatches << "\n";
+        spdlog::info("  Hash mismatches: {}", result.hash_mismatches);
       if(result.size_mismatches > 0)
-        std::cout << "  Size mismatches: " << result.size_mismatches << "\n";
+        spdlog::info("  Size mismatches: {}", result.size_mismatches);
       if(result.missing_files > 0)
-        std::cout << "  Missing files: " << result.missing_files << "\n";
-      std::cout << "  Result: " << (result.all_valid ? "PASS" : "FAIL") << "\n";
+        spdlog::info("  Missing files: {}", result.missing_files);
+      spdlog::info("  Result: {}", result.all_valid ? "PASS" : "FAIL");
 
       // Show individual failures
       for(const auto& e : result.entries)
       {
         if(!e.file_exists)
-          std::cout << "  MISSING: " << e.filename << "\n";
+          spdlog::info("  MISSING: {}", e.filename);
         else if(!e.hash_match)
-          std::cout << "  HASH MISMATCH: " << e.filename << "\n";
+          spdlog::info("  HASH MISMATCH: {}", e.filename);
         else if(!e.size_match)
-          std::cout << "  SIZE MISMATCH: " << e.filename << " (expected "
-                    << e.expected_size << ", got " << e.actual_size << ")\n";
+          spdlog::info("  SIZE MISMATCH: {} (expected {}, got {})", e.filename,
+                       e.expected_size, e.actual_size);
       }
     }
     return result.all_valid ? 0 : 1;
@@ -501,14 +505,14 @@ int main(int argc, char* argv[])
     auto result = dcpdoctor::extract_mxf(ex_opts);
     if(!result.success)
     {
-      std::cerr << "Error: " << result.error << "\n";
+      spdlog::error("Error: {}", result.error);
       return 1;
     }
-    std::cout << "Extracted " << result.extracted_files.size() << " file(s):\n";
+    spdlog::info("Extracted {} file(s):", result.extracted_files.size());
     for(const auto& f : result.extracted_files)
-      std::cout << "  " << f.string() << "\n";
+      spdlog::info("  {}", f.string());
     if(result.frames_extracted > 0)
-      std::cout << "Frames: " << result.frames_extracted << "\n";
+      spdlog::info("Frames: {}", result.frames_extracted);
     return 0;
   }
 
@@ -517,7 +521,7 @@ int main(int argc, char* argv[])
   {
     if(qc_video.empty() && qc_audio.empty())
     {
-      std::cerr << "Error: specify --video and/or --audio\n";
+      spdlog::error("Error: specify --video and/or --audio");
       return 2;
     }
 
@@ -532,24 +536,24 @@ int main(int argc, char* argv[])
     auto result = dcpdoctor::run_auto_qc(qc_opts);
     if(!result.success)
     {
-      std::cerr << "Error: " << result.error << "\n";
+      spdlog::error("Error: {}", result.error);
       return 1;
     }
 
     if(qc_json_flag)
     {
-      std::cout << dcpdoctor::auto_qc_to_json(result);
+      spdlog::info("{}", dcpdoctor::auto_qc_to_json(result));
     }
     else
     {
-      std::cout << "Auto QC Results:\n";
-      std::cout << "  Issues found: " << result.issues.size() << "\n\n";
+      spdlog::info("Auto QC Results:");
+      spdlog::info("  Issues found: {}\n", result.issues.size());
       for(const auto& issue : result.issues)
       {
-        std::cout << "  [" << issue.severity << "] " << issue.description << "\n";
+        spdlog::info("  [{}] {}", issue.severity, issue.description);
       }
       if(result.issues.empty())
-        std::cout << "  No issues detected.\n";
+        spdlog::info("  No issues detected.");
     }
     return result.issues.empty() ? 0 : 1;
   }
@@ -558,7 +562,7 @@ int main(int argc, char* argv[])
   if(validate_imp_cmd->parsed())
   {
     auto vr = dcpdoctor::validate_with_photon(vimp_dir);
-    std::cout << "IMP Validation: " << (vr.valid ? "PASS" : "FAIL") << "\n";
+    spdlog::info("IMP Validation: {}", vr.valid ? "PASS" : "FAIL");
     if(!vr.notes.empty())
     {
       for(const auto& n : vr.notes)
@@ -568,7 +572,7 @@ int main(int argc, char* argv[])
           sev = "ERROR";
         else if(n.severity == dcpdoctor::ValidationNote::Severity::warning)
           sev = "WARN";
-        std::cout << "  [" << sev << "] " << n.message << "\n";
+        spdlog::info("  [{}] {}", sev, n.message);
       }
     }
     return vr.valid ? 0 : 1;
@@ -586,13 +590,13 @@ int main(int argc, char* argv[])
     sv_opts.validate_assetmap = sv_assetmap;
 
     auto sr = dcpdoctor::validate_against_schema(sv_opts);
-    std::cout << "Schema Validation: " << (sr.valid ? "PASS" : "FAIL") << "\n";
+    spdlog::info("Schema Validation: {}", sr.valid ? "PASS" : "FAIL");
     if(!sr.schema_version.empty())
-      std::cout << "  Schema: " << sr.schema_version << "\n";
+      spdlog::info("  Schema: {}", sr.schema_version);
     for(const auto& e : sr.errors)
     {
-      std::cout << "  " << (e.is_warning ? "WARN" : "ERROR") << " " << e.file
-                << ":" << e.line << ":" << e.column << " " << e.message << "\n";
+      spdlog::info("  {} {}:{}:{} {}", e.is_warning ? "WARN" : "ERROR", e.file,
+                   e.line, e.column, e.message);
     }
     return sr.valid ? 0 : 1;
   }
@@ -615,18 +619,18 @@ int main(int argc, char* argv[])
     auto cr = dcpdoctor::check_imf_compliance(ic_opts);
     if(!cr.success)
     {
-      std::cerr << "Error: " << cr.error << "\n";
+      spdlog::error("Error: {}", cr.error);
       return 1;
     }
-    std::cout << dcpdoctor::imf_compliance_target_name(cr.target) << " Compliance: "
-              << (cr.compliant ? "PASS" : "FAIL") << "\n";
+    spdlog::info("{} Compliance: {}", dcpdoctor::imf_compliance_target_name(cr.target),
+                 cr.compliant ? "PASS" : "FAIL");
     for(const auto& c : cr.checks)
     {
-      std::cout << "  " << (c.passed ? "PASS" : "FAIL") << " " << c.rule
-                << ": " << c.description;
       if(!c.actual_value.empty())
-        std::cout << " (got " << c.actual_value << ", expected " << c.expected_value << ")";
-      std::cout << "\n";
+        spdlog::info("  {} {}: {} (got {}, expected {})", c.passed ? "PASS" : "FAIL", c.rule,
+                     c.description, c.actual_value, c.expected_value);
+      else
+        spdlog::info("  {} {}: {}", c.passed ? "PASS" : "FAIL", c.rule, c.description);
     }
     return cr.compliant ? 0 : 1;
   }
@@ -643,15 +647,15 @@ int main(int argc, char* argv[])
     auto fr = dcpdoctor::analyze_frame_qc(fqc_opts);
     if(!fr.success)
     {
-      std::cerr << "Error: " << fr.error << "\n";
+      spdlog::error("Error: {}", fr.error);
       return 1;
     }
-    std::cout << "Frame QC Analysis:\n";
-    std::cout << "  Total frames: " << fr.total_frames << "\n";
-    std::cout << "  Average bitrate: " << fr.average_bitrate_mbps << " Mbps\n";
-    std::cout << "  Peak bitrate: " << fr.peak_bitrate_mbps << " Mbps\n";
-    std::cout << "  Over budget: " << fr.over_budget_count << "\n";
-    std::cout << "  Under budget: " << fr.under_budget_count << "\n";
+    spdlog::info("Frame QC Analysis:");
+    spdlog::info("  Total frames: {}", fr.total_frames);
+    spdlog::info("  Average bitrate: {} Mbps", fr.average_bitrate_mbps);
+    spdlog::info("  Peak bitrate: {} Mbps", fr.peak_bitrate_mbps);
+    spdlog::info("  Over budget: {}", fr.over_budget_count);
+    spdlog::info("  Under budget: {}", fr.under_budget_count);
     return (fr.over_budget_count == 0 && fr.under_budget_count == 0) ? 0 : 1;
   }
 
@@ -672,10 +676,10 @@ int main(int argc, char* argv[])
     auto qr = dcpdoctor::generate_detailed_qc(qcr_opts);
     if(!qr.success)
     {
-      std::cerr << "Error: " << qr.error << "\n";
+      spdlog::error("Error: {}", qr.error);
       return 1;
     }
-    std::cout << "QC report written to: " << qr.output_file << " (" << qr.pages << " pages)\n";
+    spdlog::info("QC report written to: {} ({} pages)", qr.output_file.string(), qr.pages);
     return 0;
   }
 
@@ -691,11 +695,11 @@ int main(int argc, char* argv[])
       auto nr = dcpdoctor::normalize_loudness(norm_opts);
       if(!nr.success)
       {
-        std::cerr << "Error: " << nr.error << "\n";
+        spdlog::error("Error: {}", nr.error);
         return 1;
       }
-      std::cout << "Normalized to " << loud_target << " LUFS\n";
-      std::cout << "Output: " << nr.output_file << "\n";
+      spdlog::info("Normalized to {} LUFS", loud_target);
+      spdlog::info("Output: {}", nr.output_file.string());
       return 0;
     }
     else
@@ -703,15 +707,15 @@ int main(int argc, char* argv[])
       auto lr = dcpdoctor::measure_imf_loudness(loud_audio);
       if(!lr.success)
       {
-        std::cerr << "Error: " << lr.error << "\n";
+        spdlog::error("Error: {}", lr.error);
         return 1;
       }
-      std::cout << "Loudness Measurement:\n";
-      std::cout << "  Integrated: " << lr.integrated_lufs << " LUFS\n";
-      std::cout << "  Range: " << lr.loudness_range_lu << " LU\n";
-      std::cout << "  True peak: " << lr.true_peak_dbtp << " dBTP\n";
-      std::cout << "  EBU R128: " << (lr.compliant_r128 ? "PASS" : "FAIL") << "\n";
-      std::cout << "  ATSC A/85: " << (lr.compliant_atsc ? "PASS" : "FAIL") << "\n";
+      spdlog::info("Loudness Measurement:");
+      spdlog::info("  Integrated: {} LUFS", lr.integrated_lufs);
+      spdlog::info("  Range: {} LU", lr.loudness_range_lu);
+      spdlog::info("  True peak: {} dBTP", lr.true_peak_dbtp);
+      spdlog::info("  EBU R128: {}", lr.compliant_r128 ? "PASS" : "FAIL");
+      spdlog::info("  ATSC A/85: {}", lr.compliant_atsc ? "PASS" : "FAIL");
       return (lr.compliant_r128 || lr.compliant_atsc) ? 0 : 1;
     }
   }
@@ -729,13 +733,13 @@ int main(int argc, char* argv[])
     auto ar = dcpdoctor::detect_av_sync(avs_opts);
     if(!ar.success)
     {
-      std::cerr << "Error: " << ar.error << "\n";
+      spdlog::error("Error: {}", ar.error);
       return 1;
     }
-    std::cout << "AV Sync: " << (ar.in_sync ? "IN SYNC" : "OUT OF SYNC") << "\n";
-    std::cout << "  Drift: " << ar.drift_ms << " ms (" << ar.drift_frames << " frames)\n";
+    spdlog::info("AV Sync: {}", ar.in_sync ? "IN SYNC" : "OUT OF SYNC");
+    spdlog::info("  Drift: {} ms ({} frames)", ar.drift_ms, ar.drift_frames);
     if(!ar.recommendation.empty())
-      std::cout << "  Recommendation: " << ar.recommendation << "\n";
+      spdlog::info("  Recommendation: {}", ar.recommendation);
     return ar.in_sync ? 0 : 1;
   }
 
@@ -763,14 +767,14 @@ int main(int argc, char* argv[])
     auto hr = dcpdoctor::validate_hdr_metadata(hv_opts);
     if(!hr.success)
     {
-      std::cerr << "Error: " << hr.error << "\n";
+      spdlog::error("Error: {}", hr.error);
       return 1;
     }
-    std::cout << "HDR Validation: " << (hr.valid ? "PASS" : "FAIL") << "\n";
+    spdlog::info("HDR Validation: {}", hr.valid ? "PASS" : "FAIL");
     for(const auto& issue : hr.issues)
     {
-      std::cout << "  [" << issue.severity << "] " << issue.field
-                << ": expected " << issue.expected << ", got " << issue.actual << "\n";
+      spdlog::info("  [{}] {}: expected {}, got {}", issue.severity, issue.field,
+                   issue.expected, issue.actual);
     }
     return hr.valid ? 0 : 1;
   }
@@ -794,12 +798,12 @@ int main(int argc, char* argv[])
       auto cr = dcpdoctor::compare_files(fc_file_a, fc_file_b, cfo);
       if(!cr.success)
       {
-        std::cerr << "Error: " << cr.error << "\n";
+        spdlog::error("Error: {}", cr.error);
         return 1;
       }
-      std::cout << "Comparison: " << cr.frames_compared << " frames, "
-                << cr.frames_different << " significant differences\n";
-      std::cout << "  Avg PSNR: " << cr.avg_psnr << " dB\n";
+      spdlog::info("Comparison: {} frames, {} significant differences",
+                   cr.frames_compared, cr.frames_different);
+      spdlog::info("  Avg PSNR: {} dB", cr.avg_psnr);
       return cr.frames_different == 0 ? 0 : 1;
     }
     else
@@ -820,12 +824,12 @@ int main(int argc, char* argv[])
       auto cr = dcpdoctor::compare_imps(co);
       if(!cr.success)
       {
-        std::cerr << "Error: " << cr.error << "\n";
+        spdlog::error("Error: {}", cr.error);
         return 1;
       }
-      std::cout << "Comparison: " << cr.frames_compared << " frames, "
-                << cr.frames_different << " significant differences\n";
-      std::cout << "  Avg PSNR: " << cr.avg_psnr << " dB\n";
+      spdlog::info("Comparison: {} frames, {} significant differences",
+                   cr.frames_compared, cr.frames_different);
+      spdlog::info("  Avg PSNR: {} dB", cr.avg_psnr);
       return cr.frames_different == 0 ? 0 : 1;
     }
   }
@@ -836,18 +840,18 @@ int main(int argc, char* argv[])
     auto info = dcpdoctor::read_imp_info(impinfo_dir);
     if(!info.valid)
     {
-      std::cerr << "Error: " << info.error << "\n";
+      spdlog::error("Error: {}", info.error);
       return 1;
     }
-    std::cout << "IMP: " << info.path << "\n";
-    std::cout << "  CPL: " << info.cpl_uuid << " (" << info.cpl_title << ")\n";
-    std::cout << "  PKL: " << info.pkl_uuid << "\n";
-    std::cout << "  Issuer: " << info.issuer << "\n";
-    std::cout << "  Date: " << info.issue_date << "\n";
-    std::cout << "  Tracks: " << info.tracks.size() << "\n";
+    spdlog::info("IMP: {}", info.path.string());
+    spdlog::info("  CPL: {} ({})", info.cpl_uuid, info.cpl_title);
+    spdlog::info("  PKL: {}", info.pkl_uuid);
+    spdlog::info("  Issuer: {}", info.issuer);
+    spdlog::info("  Date: {}", info.issue_date);
+    spdlog::info("  Tracks: {}", info.tracks.size());
     for(const auto& t : info.tracks)
     {
-      std::cout << "    " << t.type << ": " << t.filename << " (" << t.size << " bytes)\n";
+      spdlog::info("    {}: {} ({} bytes)", t.type, t.filename, t.size);
     }
     return 0;
   }
@@ -855,7 +859,7 @@ int main(int argc, char* argv[])
   // === VALIDATE mode (default) ===
   if(dcp_dirs.empty())
   {
-    std::cerr << app.help() << "\n";
+    spdlog::error("{}", app.help());
     return 2;
   }
 
@@ -998,7 +1002,9 @@ int main(int argc, char* argv[])
       }
       else
       {
-        dcpdoctor::write_report(result, dir, std::cout, format);
+        std::ostringstream oss;
+        dcpdoctor::write_report(result, dir, oss, format);
+        spdlog::info("{}", oss.str());
       }
 
       // Fix suggestions
@@ -1007,13 +1013,14 @@ int main(int argc, char* argv[])
         auto fixes = dcpdoctor::suggest_fixes(result.notes);
         if(!fixes.empty())
         {
-          std::cout << "\nSuggested Fixes:\n";
+          spdlog::info("\nSuggested Fixes:");
           for(size_t fi = 0; fi < fixes.size(); ++fi)
           {
-            std::cout << "  " << (fi + 1) << ". " << fixes[fi].description;
             if(!fixes[fi].command.empty())
-              std::cout << "\n     Command: " << fixes[fi].command;
-            std::cout << "\n";
+              spdlog::info("  {}. {}\n     Command: {}", fi + 1, fixes[fi].description,
+                           fixes[fi].command);
+            else
+              spdlog::info("  {}. {}", fi + 1, fixes[fi].description);
           }
         }
       }
@@ -1048,8 +1055,9 @@ int main(int argc, char* argv[])
   // Batch summary for multiple DCPs
   if(batch_results.size() > 1)
   {
-    std::cout << "\n";
-    dcpdoctor::write_batch_summary(std::cout, batch_results);
+    std::ostringstream oss;
+    dcpdoctor::write_batch_summary(oss, batch_results);
+    spdlog::info("\n{}", oss.str());
   }
 
   return all_passed ? 0 : 1;

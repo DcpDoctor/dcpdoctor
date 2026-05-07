@@ -1,10 +1,11 @@
-#include "dcpdoctor/validate.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <sstream>
+
+#include "dcpdoctor/validate.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

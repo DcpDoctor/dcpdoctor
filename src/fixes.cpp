@@ -1,6 +1,7 @@
-#include "dcpdoctor/fixes.h"
 #include <filesystem>
 #include <map>
+
+#include "dcpdoctor/fixes.h"
 
 namespace dcpdoctor
 {

@@ -1,8 +1,9 @@
-#include "dcpdoctor/audio.h"
 #include <AS_DCP.h>
 #include <KM_fileio.h>
 #include <cmath>
 #include <algorithm>
+
+#include "dcpdoctor/audio.h"
 
 namespace dcpdoctor
 {

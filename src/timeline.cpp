@@ -1,8 +1,9 @@
-#include "dcpdoctor/timeline.h"
 #include <libxml/parser.h>
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+
+#include "dcpdoctor/timeline.h"
 
 namespace dcpdoctor
 {

@@ -1,7 +1,8 @@
-#include "dcpdoctor/isdcf.h"
 #include <regex>
 #include <set>
 #include <sstream>
+
+#include "dcpdoctor/isdcf.h"
 
 namespace dcpdoctor
 {

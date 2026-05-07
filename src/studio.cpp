@@ -1,4 +1,3 @@
-#include "dcpdoctor/studio.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
@@ -11,6 +10,8 @@
 #include <algorithm>
 #include <numeric>
 #include <cstring>
+
+#include "dcpdoctor/studio.h"
 
 namespace fs = std::filesystem;
 

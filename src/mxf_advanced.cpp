@@ -1,9 +1,10 @@
-#include "dcpdoctor/mxf_advanced.h"
 #include <AS_DCP.h>
 #include <KM_fileio.h>
 #include <fstream>
 #include <cstring>
 #include <algorithm>
+
+#include "dcpdoctor/mxf_advanced.h"
 
 namespace dcpdoctor
 {

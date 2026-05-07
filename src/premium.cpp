@@ -1,4 +1,3 @@
-#include "dcpdoctor/premium.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <AS_DCP.h>
@@ -10,6 +9,8 @@
 #include <regex>
 #include <cstring>
 #include <algorithm>
+
+#include "dcpdoctor/premium.h"
 
 namespace dcpdoctor
 {

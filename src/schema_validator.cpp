@@ -1,6 +1,7 @@
-#include "dcpdoctor/schema_validator.h"
 #include <libxml/xmlschemas.h>
 #include <libxml/parser.h>
+
+#include "dcpdoctor/schema_validator.h"
 
 namespace dcpdoctor
 {

@@ -1,4 +1,3 @@
-#include "dcpdoctor/signature.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/c14n.h>
@@ -11,6 +10,8 @@
 #include <openssl/x509_vfy.h>
 #include <cstring>
 #include <ctime>
+
+#include "dcpdoctor/signature.h"
 
 namespace dcpdoctor
 {

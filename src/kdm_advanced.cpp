@@ -1,10 +1,11 @@
-#include "dcpdoctor/kdm_advanced.h"
-#include "dcpdoctor/platform.h"
 #include <libxml/parser.h>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <fstream>
+
+#include "dcpdoctor/kdm_advanced.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

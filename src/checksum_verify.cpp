@@ -1,11 +1,12 @@
-#include "dcpdoctor/checksum_verify.h"
-#include "dcpdoctor/hash.h"
-#include "dcpdoctor/pkl.h"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
 #include <regex>
 #include <unordered_map>
+
+#include "dcpdoctor/checksum_verify.h"
+#include "dcpdoctor/hash.h"
+#include "dcpdoctor/pkl.h"
 
 namespace fs = std::filesystem;
 

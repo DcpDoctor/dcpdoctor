@@ -1,14 +1,14 @@
-#include "dcpdoctor/frame_compare.h"
-#include "dcpdoctor/info.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
-
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <regex>
 #include <sstream>
+
+#include "dcpdoctor/frame_compare.h"
+#include "dcpdoctor/info.h"
+#include "dcpdoctor/platform.h"
 
 namespace fs = std::filesystem;
 

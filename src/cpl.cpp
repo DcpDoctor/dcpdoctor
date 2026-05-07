@@ -1,7 +1,8 @@
-#include "dcpdoctor/cpl.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <cstring>
+
+#include "dcpdoctor/cpl.h"
 
 namespace dcpdoctor
 {

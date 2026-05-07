@@ -1,9 +1,10 @@
-#include "dcpdoctor/loudness.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <array>
 #include <cstdio>
 #include <regex>
+
+#include "dcpdoctor/loudness.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

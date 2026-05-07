@@ -1,3 +1,7 @@
+#include <filesystem>
+#include <set>
+#include <unordered_map>
+
 #include "dcpdoctor/dcpdoctor.h"
 #include "dcpdoctor/assetmap.h"
 #include "dcpdoctor/compliance.h"
@@ -11,9 +15,6 @@
 #include "dcpdoctor/signature.h"
 #include "dcpdoctor/subtitle.h"
 #include "dcpdoctor/validators.h"
-#include <filesystem>
-#include <set>
-#include <unordered_map>
 
 namespace fs = std::filesystem;
 

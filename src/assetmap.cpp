@@ -1,7 +1,8 @@
-#include "dcpdoctor/assetmap.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <cstring>
+
+#include "dcpdoctor/assetmap.h"
 
 namespace dcpdoctor
 {

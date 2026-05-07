@@ -1,9 +1,10 @@
-#include "dcpdoctor/advanced.h"
 #include <libxml/parser.h>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <iomanip>
+
+#include "dcpdoctor/advanced.h"
 
 namespace dcpdoctor
 {

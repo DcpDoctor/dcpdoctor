@@ -1,11 +1,12 @@
-#include "dcpdoctor/photon.h"
-#include "dcpdoctor/platform.h"
 #include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <regex>
 #include <sstream>
+
+#include "dcpdoctor/photon.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

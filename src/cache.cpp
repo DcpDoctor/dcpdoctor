@@ -1,6 +1,7 @@
-#include "dcpdoctor/cache.h"
 #include <filesystem>
 #include <cstring>
+
+#include "dcpdoctor/cache.h"
 
 // Minimal SQLite3 interface (we use the system sqlite3 if available,
 // otherwise provide a simple file-based fallback)

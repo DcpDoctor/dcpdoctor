@@ -1,8 +1,10 @@
-#include "dcpdoctor/report.h"
 #include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <ostream>
+
+#include "dcpdoctor/report.h"
+
 #ifdef _WIN32
 #include <io.h>
 #define DCPDOCTOR_ISATTY _isatty

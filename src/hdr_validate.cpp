@@ -1,10 +1,11 @@
-#include "dcpdoctor/hdr_validate.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <array>
 #include <cstdio>
 #include <regex>
 #include <sstream>
+
+#include "dcpdoctor/hdr_validate.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

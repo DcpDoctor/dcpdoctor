@@ -1,9 +1,10 @@
-#include "dcpdoctor/subtitle.h"
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 #include <set>
 #include <string>
+
+#include "dcpdoctor/subtitle.h"
 
 namespace dcpdoctor
 {

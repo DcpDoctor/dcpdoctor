@@ -1,15 +1,17 @@
+#include <spdlog/spdlog.h>
+#include <chrono>
+#include <set>
+#include <sstream>
+#include <thread>
+
 #include "dcpdoctor/server.h"
 #include "dcpdoctor/report.h"
-#include <spdlog/spdlog.h>
+
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #endif
-#include <chrono>
-#include <set>
-#include <sstream>
-#include <thread>
 
 namespace dcpdoctor
 {

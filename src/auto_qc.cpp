@@ -1,9 +1,10 @@
-#include "dcpdoctor/auto_qc.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <cstdio>
 #include <regex>
 #include <sstream>
+
+#include "dcpdoctor/auto_qc.h"
+#include "dcpdoctor/platform.h"
 
 namespace dcpdoctor
 {

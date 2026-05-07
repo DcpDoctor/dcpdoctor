@@ -1,9 +1,10 @@
-#include "dcpdoctor/mxf_extract.h"
-#include "dcpdoctor/mxf.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
 #include <cstdio>
 #include <filesystem>
+
+#include "dcpdoctor/mxf_extract.h"
+#include "dcpdoctor/mxf.h"
+#include "dcpdoctor/platform.h"
 
 namespace fs = std::filesystem;
 

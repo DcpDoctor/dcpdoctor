@@ -1,8 +1,9 @@
-#include "dcpdoctor/bitrate.h"
-#include "dcpdoctor/j2k.h"
 #include <AS_DCP.h>
 #include <KM_fileio.h>
 #include <algorithm>
+
+#include "dcpdoctor/bitrate.h"
+#include "dcpdoctor/j2k.h"
 
 namespace dcpdoctor
 {

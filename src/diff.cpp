@@ -1,10 +1,11 @@
-#include "dcpdoctor/diff.h"
 #include <libxml/parser.h>
 #include <algorithm>
 #include <fstream>
 #include <map>
 #include <set>
 #include <sstream>
+
+#include "dcpdoctor/diff.h"
 
 namespace dcpdoctor
 {

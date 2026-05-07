@@ -1,15 +1,15 @@
-#include "dcpdoctor/qc_report.h"
-#include "dcpdoctor/info.h"
-#include "dcpdoctor/loudness.h"
-#include "dcpdoctor/platform.h"
 #include <spdlog/spdlog.h>
-
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+
+#include "dcpdoctor/qc_report.h"
+#include "dcpdoctor/info.h"
+#include "dcpdoctor/loudness.h"
+#include "dcpdoctor/platform.h"
 
 namespace fs = std::filesystem;
 
