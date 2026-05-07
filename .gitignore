@@ -5,3 +5,12 @@ gui/node_modules/
 gui/dist/
 gui/src-tauri/target/
 gui/src-tauri/dcpdoctor-*
+
+# Test DCP downloads (large files)
+tests/dcps/isdcf/*.zip
+tests/dcps/isdcf/*.pdf
+tests/dcps/isdcf/SMPTE_*
+tests/dcps/isdcf/__MACOSX/
+tests/dcps/hfr/*.tar
+tests/dcps/hfr/fox-*
+tests/dcps/synthetic/
