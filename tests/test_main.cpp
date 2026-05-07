@@ -794,6 +794,11 @@ TEST(cache_basic_operations)
   fs::path tmp = fs::temp_directory_path() / "dcpdoctor_test_cache.db";
   fs::path test_file = fs::temp_directory_path() / "dcpdoctor_test_file.txt";
 
+  // Clean up any leftover from previous runs
+  std::error_code ec;
+  fs::remove(tmp, ec);
+  fs::remove(test_file, ec);
+
   // Create test file
   {
     std::ofstream f(test_file);

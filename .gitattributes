@@ -1,2 +1,4 @@
 # Ensure test fixtures maintain exact byte content across platforms
+tests/fixtures/**/*.mxf binary
+tests/fixtures/**/*.xml binary
 tests/fixtures/** binary
