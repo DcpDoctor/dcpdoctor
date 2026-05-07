@@ -630,6 +630,7 @@
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
+            <li><a href="#desktop">Desktop App</a></li>
             <li><a href="#comparison">vs EasyDCP</a></li>
             <li><a href="#examples">Examples</a></li>
             <li><a href="#install">Install</a></li>
@@ -1042,6 +1043,61 @@ cmake --build build --config Release
                 <h3>Windows</h3>
                 <p>Windows 10/11 with MSVC 2022 or MinGW. vcpkg for dependency management. GitHub Actions CI verified.</p>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ DESKTOP APP ═══ -->
+<section id="desktop" style="padding: 80px 24px; border-bottom: 1px solid var(--border);">
+    <div style="max-width: 1100px; margin: 0 auto;">
+        <h2 class="section-title">Desktop Application</h2>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 48px; max-width: 650px; margin-left: auto; margin-right: auto;">
+            A native desktop GUI built with <a href="https://tauri.app" style="color: var(--accent); text-decoration: none;">Tauri</a>.
+            Drag-and-drop DCP validation with zero configuration.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
+            <div class="feat-card">
+                <div class="feat-icon" style="background: var(--accent-dim);">
+                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#22D3EE" stroke-width="2"/><path d="M12 8v8m-4-4h8" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <h3>Drag &amp; Drop</h3>
+                <p>Drop a DCP folder onto the window to instantly start validation. No command line needed.</p>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon" style="background: rgba(56, 189, 248, 0.15);">
+                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><rect x="2" y="4" width="20" height="16" rx="2" stroke="#38BDF8" stroke-width="2"/><path d="M6 10h12M6 14h8" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <h3>Visual Results</h3>
+                <p>Color-coded severity badges, filterable results table, and summary cards at a glance.</p>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon" style="background: rgba(167, 139, 250, 0.15);">
+                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><circle cx="12" cy="12" r="9" stroke="#A78BFA" stroke-width="2"/><path d="M8 12h8M12 8v8" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <h3>One-Click Checks</h3>
+                <p>Toggle Studio, Deep, Netflix, HDR, Atmos, IMF, and Accessibility with option chips.</p>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon" style="background: rgba(74, 222, 128, 0.15);">
+                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24"><rect x="2" y="3" width="20" height="18" rx="3" stroke="#4ADE80" stroke-width="2"/><path d="M2 9h20" stroke="#4ADE80" stroke-width="2"/><circle cx="5.5" cy="6" r="1" fill="#4ADE80"/><circle cx="8.5" cy="6" r="1" fill="#4ADE80"/></svg>
+                </div>
+                <h3>Native &amp; Tiny</h3>
+                <p>13MB binary using system webview. Builds .deb, .rpm, .dmg, and .msi packages.</p>
+            </div>
+        </div>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 32px; max-width: 700px; margin: 0 auto;">
+            <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 1.05rem;">Build the Desktop App</h3>
+            <pre style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8;"><code style="color: var(--text-secondary);"><span style="color: var(--text-tertiary);"># Build CLI first</span>
+<span style="color: var(--accent);">cd</span> build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
+
+<span style="color: var(--text-tertiary);"># Copy CLI as sidecar + build GUI</span>
+<span style="color: var(--accent);">cd</span> ../gui && npm install
+cp ../build/dcpdoctor src-tauri/dcpdoctor-$(rustc -vV | grep host | cut -d' ' -f2)
+npx tauri build
+
+<span style="color: var(--text-tertiary);"># Packages in gui/src-tauri/target/release/bundle/</span></code></pre>
         </div>
     </div>
 </section>
