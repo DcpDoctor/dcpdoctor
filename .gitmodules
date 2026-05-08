@@ -10,3 +10,6 @@
 [submodule "extern/photon"]
 	path = extern/photon
 	url = https://github.com/Netflix/photon.git
+[submodule "extern/postkit"]
+	path = extern/postkit
+	url = https://github.com/DcpDoctor/postkit.git

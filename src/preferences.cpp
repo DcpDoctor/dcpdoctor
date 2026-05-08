@@ -1,10 +1,30 @@
 #include "dcpdoctor/preferences.h"
+#include "postkit/preferences.h"
 
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
+
+static constexpr uint32_t CURRENT_PREFS_VERSION = 1;
+
+static std::vector<postkit::PrefsMigration> migrations()
+{
+  return {
+    {1, "Initial versioned schema", [](std::string const& json) {
+      auto j = postkit::json_insert_if_missing(json, "default_standard", "\"SMPTE\"");
+      j = postkit::json_insert_if_missing(j, "verify_hashes", "true");
+      j = postkit::json_insert_if_missing(j, "verify_schemas", "true");
+      j = postkit::json_insert_if_missing(j, "check_bitrate", "true");
+      j = postkit::json_insert_if_missing(j, "check_loudness", "false");
+      j = postkit::json_insert_if_missing(j, "max_bitrate_mbps", "250");
+      j = postkit::json_insert_if_missing(j, "theme", "\"dark\"");
+      j = postkit::json_insert_if_missing(j, "show_advanced_options", "false");
+      return j;
+    }},
+  };
+}
 
 namespace dcpdoctor
 {
@@ -86,6 +106,20 @@ Preferences load_preferences()
   std::ostringstream ss;
   ss << f.rdbuf();
   std::string json = ss.str();
+  f.close();
+
+  uint32_t file_version = postkit::prefs_version(json);
+  if (file_version < CURRENT_PREFS_VERSION)
+  {
+    spdlog::info("Migrating preferences from version {} to {}", file_version, CURRENT_PREFS_VERSION);
+    json = postkit::migrate_preferences(json, migrations());
+    std::ofstream out(path);
+    if (out.is_open())
+    {
+      out << json;
+      out.close();
+    }
+  }
 
   auto s = [&](const std::string& key, std::string& field) {
     auto v = json_string(json, key);
@@ -137,6 +171,7 @@ int save_preferences(const Preferences& prefs)
   }
 
   f << "{\n";
+  f << "  \"version\": " << CURRENT_PREFS_VERSION << ",\n";
   f << "  \"default_standard\": \"" << escape_json(prefs.default_standard) << "\",\n";
   f << "  \"verify_hashes\": " << (prefs.verify_hashes ? "true" : "false") << ",\n";
   f << "  \"verify_schemas\": " << (prefs.verify_schemas ? "true" : "false") << ",\n";
