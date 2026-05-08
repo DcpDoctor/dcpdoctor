@@ -76,6 +76,7 @@ add_library(dcpdoctor_core STATIC
     src/signature.cpp
     src/report.cpp
     src/note.cpp
+    src/preferences.cpp
     src/timeline.cpp
     src/advanced.cpp
     src/server.cpp
