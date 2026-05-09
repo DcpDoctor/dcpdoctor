@@ -112,9 +112,10 @@ add_library(dcpdoctor_core STATIC
     src/frame_compare.cpp
     src/info.cpp)
 
+get_target_property(_ASDCP_SOURCE_DIR libasdcp SOURCE_DIR)
 target_include_directories(dcpdoctor_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/asdcplib/src)
+    ${_ASDCP_SOURCE_DIR})
 
 if(WIN32)
     target_compile_definitions(dcpdoctor_core PUBLIC KM_WIN32)
