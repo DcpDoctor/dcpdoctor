@@ -1,5 +1,9 @@
 # DcpDoctor
 
+[![CI](https://github.com/PostPerfection/dcpdoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/PostPerfection/dcpdoctor/actions/workflows/ci.yml)
+
+[Documentation](https://postperfection.github.io/dcpdoctor/)
+
 A comprehensive, professional-grade DCP (Digital Cinema Package) validator, analyzer, and diagnostic tool. Built in C++23 for maximum performance.
 
 DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standards with the depth and precision required for theatrical distribution.
