@@ -1,0 +1,17 @@
+[package]
+name = "dcpdoctor-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "DCP/IMF validator CLI"
+
+[[bin]]
+name = "dcpdoctor"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+dcpdoctor-core = { path = "../dcpdoctor-core" }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

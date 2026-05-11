@@ -96,3 +96,29 @@ jobs:
         run: |
           cd build
           ctest --output-on-failure --build-config Release
+
+  rust:
+    name: Rust ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        working-directory: rust
+        run: cargo build
+
+      - name: Test
+        working-directory: rust
+        run: cargo test
+
+      - name: Clippy
+        working-directory: rust
+        run: cargo clippy -- -D warnings
+
+      - name: Format check
+        working-directory: rust
+        run: cargo fmt -- --check
