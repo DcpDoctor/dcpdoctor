@@ -4,7 +4,7 @@
 
 [Documentation](https://postperfection.github.io/dcpdoctor/)
 
-A comprehensive, professional-grade DCP (Digital Cinema Package) validator, analyzer, and diagnostic tool. The core library and CLI are written in Rust, with a legacy C++ implementation.
+A comprehensive, professional-grade DCP (Digital Cinema Package) validator, analyzer, and diagnostic tool. Written in Rust.
 
 DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standards with the depth and precision required for theatrical distribution.
 
@@ -104,8 +104,6 @@ DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standa
 
 ## Installation
 
-### Rust (primary)
-
 ```bash
 cd rust
 cargo build --release
@@ -113,65 +111,6 @@ cargo test
 ```
 
 The Rust workspace uses [postkit](https://github.com/PostPerfection/postkit) as a git dependency.
-
-### C++ (legacy)
-
-#### Dependencies
-
-| Dependency | Version | Purpose |
-|---|---|---|
-| CMake | 3.25+ | Build system |
-| C++ compiler | GCC 13+ / Clang 17+ | C++23 support required |
-| libxml2 | 2.12+ | XML parsing, C14N, XPath |
-| OpenSSL | 3.0+ | SHA hashes, RSA signatures, X.509 |
-| Xerces-C++ | 3.2+ | XML schema validation |
-| SQLite3 | 3.30+ | Hash cache persistence |
-
-#### Bundled (git submodules)
-| Library | Purpose |
-|---|---|
-| [CLI11](https://github.com/CLIUtils/CLI11) | Command-line parsing |
-| [spdlog](https://github.com/gabime/spdlog) | Structured logging |
-| [asdcplib](https://github.com/cinecert/asdcplib) | MXF/J2K/PCM essence reading |
-
-### C++ Build
-
-```bash
-git clone --recurse-submodules https://github.com/PostPerfection/dcpdoctor.git
-cd dcpdoctor
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-```
-
-If submodules weren't cloned:
-```bash
-git submodule update --init --recursive
-```
-
-### Install (system-wide)
-
-```bash
-sudo make install
-```
-
-### Fedora/RHEL
-
-```bash
-sudo dnf install cmake gcc-c++ libxml2-devel openssl-devel xerces-c-devel sqlite-devel
-```
-
-### Ubuntu/Debian
-
-```bash
-sudo apt install cmake g++ libxml2-dev libssl-dev libxerces-c-dev libsqlite3-dev
-```
-
-### macOS (Homebrew)
-
-```bash
-brew install cmake libxml2 openssl xerces-c sqlite
-```
 
 ## Usage
 
@@ -443,9 +382,8 @@ dcpdoctor imp-info /path/to/IMP/
 ## Running Tests
 
 ```bash
-cd build
-./dcpdoctor_test
-# 135/135 tests passed
+cd rust
+cargo test
 ```
 
 ### Studio Validation
@@ -485,11 +423,9 @@ DcpDoctor includes an optional desktop GUI built with [Tauri](https://tauri.app)
 
 ### GUI Prerequisites
 
-In addition to the core build dependencies:
-
 | Dependency | Platform | Install |
 |---|---|---|
-| Rust 1.70+ | All | [rustup.rs](https://rustup.rs) |
+| Rust 1.85+ | All | [rustup.rs](https://rustup.rs) |
 | Node.js 18+ | All | [nodejs.org](https://nodejs.org) |
 | webkit2gtk-4.1 | Linux | `sudo dnf install webkit2gtk4.1-devel` (Fedora) / `sudo apt install libwebkit2gtk-4.1-dev` (Debian) |
 | librsvg2 | Linux | `sudo dnf install librsvg2-devel` (Fedora) / `sudo apt install librsvg2-dev` (Debian) |
@@ -499,12 +435,11 @@ In addition to the core build dependencies:
 ### Build the GUI
 
 ```bash
-# First, build the CLI (needed as sidecar)
-cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
-cd ..
+# Build the CLI (needed as sidecar)
+cd rust && cargo build --release && cd ..
 
 # Copy CLI binary as sidecar
-cp build/dcpdoctor gui/src-tauri/dcpdoctor-$(rustc -vV | grep host | cut -d' ' -f2)
+cp rust/target/release/dcpdoctor gui/src-tauri/dcpdoctor-$(rustc -vV | grep host | cut -d' ' -f2)
 
 # Install frontend dependencies
 cd gui && npm install
@@ -531,32 +466,16 @@ This starts a hot-reloading dev server — edit `gui/src/` files and see changes
 
 ```
 dcpdoctor/
-├── include/dcpdoctor/    # Public headers
-│   ├── dcpdoctor.h       # Core types (Note, Code, VerifyResult, VerifyOptions)
-│   ├── advanced.h        # BV2.1, manifest, batch
-│   ├── audio.h           # Audio level analysis
-│   ├── auto_qc.h         # Automated QC (black/freeze/silence/clipping)
-│   ├── bitrate.h         # J2K bitrate stats
-│   ├── cache.h           # SQLite hash cache
-│   ├── checksum_verify.h # PKL hash/size verification
-│   ├── diff.h            # DCP comparison
-│   ├── fixes.h           # Fix suggestions
-│   ├── kdm.h             # KDM parsing/validation
-│   ├── mxf_extract.h     # MXF essence extraction
-│   ├── premium.h         # Netflix, HDR, Atmos, Accessibility
-│   ├── studio.h          # Studio-level checks (loudness, color, resolution)
-│   ├── report.h          # Output formatting + progress bar
-│   ├── server.h          # REST API + watch
-│   ├── theater.h         # Theater compatibility profiles
-│   └── timeline.h        # SVG timeline + audio sync
-├── src/                  # Implementation
-├── tests/                # Unit tests (135 assertions)
+├── rust/                 # Rust workspace
+│   ├── crates/
+│   │   ├── dcpdoctor-core/   # Core validation library
+│   │   └── dcpdoctor-cli/    # CLI binary
+│   └── Cargo.toml
 ├── gui/                  # Tauri desktop GUI
 │   ├── src/              # Web frontend (HTML/CSS/JS)
 │   ├── src-tauri/        # Rust backend (IPC commands)
 │   └── package.json      # Node.js dependencies
-├── docs/                 # GitHub Pages website
-└── extern/               # Git submodules (CLI11, spdlog, asdcplib, photon)
+└── docs/                 # GitHub Pages website
 ```
 
 ## License
