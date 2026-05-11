@@ -57,12 +57,102 @@ pub fn read_mxf_info(path: &Path) -> MxfInfo {
         };
     }
 
-    // Basic validation passed — full parsing requires asdcplib
+    // MXF header magic validated — now extract metadata via ffprobe
+    let output = std::process::Command::new("ffprobe")
+        .args([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_streams",
+            "-show_format",
+        ])
+        .arg(path)
+        .output();
+
+    let (picture, sound, essence_type) = match output {
+        Ok(o) if o.status.success() => {
+            let json: serde_json::Value = serde_json::from_slice(&o.stdout).unwrap_or_default();
+
+            let streams = json["streams"].as_array();
+
+            let mut pic = None;
+            let mut snd = None;
+
+            if let Some(streams) = streams {
+                for s in streams {
+                    match s["codec_type"].as_str() {
+                        Some("video") => {
+                            let fps_str = s["r_frame_rate"].as_str().unwrap_or("24/1");
+                            let (num, den) = parse_fraction(fps_str);
+                            pic = Some(PictureDescriptor {
+                                width: s["width"].as_u64().unwrap_or(0) as u32,
+                                height: s["height"].as_u64().unwrap_or(0) as u32,
+                                frame_rate_num: num,
+                                frame_rate_den: den,
+                                bit_depth: s["bits_per_raw_sample"]
+                                    .as_str()
+                                    .and_then(|b| b.parse().ok())
+                                    .unwrap_or(0),
+                                frame_count: s["nb_frames"]
+                                    .as_str()
+                                    .and_then(|n| n.parse().ok())
+                                    .unwrap_or(0),
+                            });
+                        }
+                        Some("audio") => {
+                            snd = Some(SoundDescriptor {
+                                sample_rate: s["sample_rate"]
+                                    .as_str()
+                                    .and_then(|r| r.parse().ok())
+                                    .unwrap_or(0),
+                                channels: s["channels"].as_u64().unwrap_or(0) as u32,
+                                bit_depth: s["bits_per_raw_sample"]
+                                    .as_str()
+                                    .and_then(|b| b.parse().ok())
+                                    .unwrap_or(s["bits_per_sample"].as_u64().unwrap_or(0) as u32),
+                                duration: s["nb_frames"]
+                                    .as_str()
+                                    .and_then(|n| n.parse().ok())
+                                    .unwrap_or(0),
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            let etype = if pic.is_some() && snd.is_some() {
+                "picture+sound"
+            } else if pic.is_some() {
+                "picture"
+            } else if snd.is_some() {
+                "sound"
+            } else {
+                "unknown"
+            };
+
+            (pic, snd, etype.to_string())
+        }
+        _ => (None, None, "unknown".to_string()),
+    };
+
     MxfInfo {
         valid: true,
         error: String::new(),
-        essence_type: "unknown".to_string(),
-        picture: None,
-        sound: None,
+        essence_type,
+        picture,
+        sound,
+    }
+}
+
+fn parse_fraction(s: &str) -> (u32, u32) {
+    let parts: Vec<&str> = s.split('/').collect();
+    if parts.len() == 2 {
+        let num: u32 = parts[0].parse().unwrap_or(0);
+        let den: u32 = parts[1].parse().unwrap_or(1);
+        (num, den)
+    } else {
+        (s.parse().unwrap_or(0), 1)
     }
 }

@@ -107,3 +107,57 @@ fn write_html_report<W: Write>(
     writeln!(writer, "</table></body></html>")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Code, Note, VerifyResult};
+
+    fn sample_result() -> VerifyResult {
+        let mut r = VerifyResult::default();
+        r.add(Note::error(Code::MissingAssetmap, "no ASSETMAP found"));
+        r.add(Note::warning(Code::PklHashMismatch, "hash mismatch"));
+        r
+    }
+
+    #[test]
+    fn test_text_report() {
+        let r = sample_result();
+        let mut buf = Vec::new();
+        write_report(&r, Path::new("/test/dcp"), &mut buf, ReportFormat::Text).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        assert!(text.contains("FAIL"));
+        assert!(text.contains("1 errors"));
+        assert!(text.contains("1 warnings"));
+    }
+
+    #[test]
+    fn test_json_report() {
+        let r = sample_result();
+        let mut buf = Vec::new();
+        write_report(&r, Path::new("/test/dcp"), &mut buf, ReportFormat::Json).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        assert_eq!(json["error_count"], 1);
+        assert_eq!(json["warning_count"], 1);
+    }
+
+    #[test]
+    fn test_html_report() {
+        let r = sample_result();
+        let mut buf = Vec::new();
+        write_report(&r, Path::new("/test/dcp"), &mut buf, ReportFormat::Html).unwrap();
+        let html = String::from_utf8(buf).unwrap();
+        assert!(html.contains("<html>"));
+        assert!(html.contains("FAIL"));
+        assert!(html.contains("missing_assetmap"));
+    }
+
+    #[test]
+    fn test_pass_report() {
+        let r = VerifyResult::default();
+        let mut buf = Vec::new();
+        write_report(&r, Path::new("/test/dcp"), &mut buf, ReportFormat::Text).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        assert!(text.contains("PASS"));
+    }
+}

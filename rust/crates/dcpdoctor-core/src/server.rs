@@ -1,18 +1,120 @@
-/// REST API server for remote validation.
-/// Placeholder — will use axum or similar.
+/// REST API server and directory watching for remote validation.
+use std::collections::HashSet;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::Path;
 
 /// Start the REST API server.
-pub fn start_server(_bind: &str, _port: u16) {
-    tracing::warn!("REST API server not yet implemented");
+///
+/// Listens for HTTP POST requests to `/verify` with a JSON body containing
+/// `{"dcp_dir": "/path/to/dcp"}`. Returns the `VerifyResult` as JSON.
+pub fn start_server(bind: &str, port: u16) {
+    let addr = format!("{bind}:{port}");
+    let listener = match TcpListener::bind(&addr) {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("Failed to bind to {addr}: {e}");
+            return;
+        }
+    };
+
+    tracing::info!("DCP Doctor REST API listening on {addr}");
+
+    for stream in listener.incoming() {
+        let mut stream = match stream {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to accept connection: {e}");
+                continue;
+            }
+        };
+
+        let mut buf = [0u8; 8192];
+        let n = match stream.read(&mut buf) {
+            Ok(n) => n,
+            Err(_) => continue,
+        };
+
+        let request = String::from_utf8_lossy(&buf[..n]);
+
+        // Parse HTTP request
+        if request.starts_with("POST /verify") {
+            // Extract JSON body (after blank line)
+            let body = request
+                .split("\r\n\r\n")
+                .nth(1)
+                .or_else(|| request.split("\n\n").nth(1))
+                .unwrap_or("");
+
+            let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+
+            let dcp_dir = parsed["dcp_dir"].as_str().unwrap_or("");
+
+            if dcp_dir.is_empty() {
+                let response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\":\"missing dcp_dir\"}";
+                let _ = stream.write_all(response.as_bytes());
+                continue;
+            }
+
+            let opts = crate::VerifyOptions::standard();
+            let result = crate::verify(Path::new(dcp_dir), &opts);
+            let json = serde_json::to_string(&result).unwrap_or_default();
+
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                json.len(),
+                json
+            );
+            let _ = stream.write_all(response.as_bytes());
+        } else {
+            let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+            let _ = stream.write_all(response.as_bytes());
+        }
+    }
 }
 
 /// Watch a directory for new DCPs and auto-validate.
+///
+/// Polls the directory at the given interval and validates any new or modified
+/// DCP subdirectories, invoking the callback with results.
 pub fn watch_directory(
-    _dir: &Path,
-    _opts: &crate::VerifyOptions,
-    _on_result: impl Fn(&Path, &crate::VerifyResult),
-    _poll_interval_ms: u32,
+    dir: &Path,
+    opts: &crate::VerifyOptions,
+    on_result: impl Fn(&Path, &crate::VerifyResult),
+    poll_interval_ms: u32,
 ) {
-    tracing::warn!("Directory watching not yet implemented");
+    let interval = std::time::Duration::from_millis(poll_interval_ms as u64);
+    let mut known: HashSet<std::path::PathBuf> = HashSet::new();
+
+    tracing::info!(
+        "Watching {} for new DCPs (poll {}ms)",
+        dir.display(),
+        poll_interval_ms
+    );
+
+    loop {
+        let entries: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+
+        for entry in &entries {
+            // Check if this looks like a DCP (has ASSETMAP or ASSETMAP.xml)
+            let is_dcp = entry.join("ASSETMAP").exists() || entry.join("ASSETMAP.xml").exists();
+            if !is_dcp {
+                continue;
+            }
+
+            if known.insert(entry.clone()) {
+                tracing::info!("New DCP detected: {}", entry.display());
+                let result = crate::verify(entry, opts);
+                on_result(entry, &result);
+            }
+        }
+
+        std::thread::sleep(interval);
+    }
 }

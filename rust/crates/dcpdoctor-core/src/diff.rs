@@ -89,7 +89,72 @@ pub fn diff_dcps(dcp_a: &Path, dcp_b: &Path, compare_hashes: bool) -> DiffResult
         }
     }
 
-    let _ = compare_hashes; // TODO: implement hash comparison
+    // Compare asset hashes if requested
+    if compare_hashes {
+        use std::collections::HashMap;
+
+        let dir_a = dcp_a.assetmap_path.parent().unwrap_or(Path::new("."));
+        let dir_b = dcp_b.assetmap_path.parent().unwrap_or(Path::new("."));
+
+        // Build maps of asset ID → path for both DCPs
+        let assets_a: HashMap<&str, &str> = dcp_a
+            .assetmap
+            .assets
+            .iter()
+            .map(|a| (a.id.as_str(), a.path.as_str()))
+            .collect();
+
+        let assets_b: HashMap<&str, &str> = dcp_b
+            .assetmap
+            .assets
+            .iter()
+            .map(|a| (a.id.as_str(), a.path.as_str()))
+            .collect();
+
+        // Compare hashes for matching asset IDs
+        for (id, path_a) in &assets_a {
+            if let Some(path_b) = assets_b.get(id) {
+                let full_a = dir_a.join(path_a);
+                let full_b = dir_b.join(path_b);
+
+                if full_a.exists() && full_b.exists() {
+                    let hash_a = crate::hash::sha1_base64(&full_a);
+                    let hash_b = crate::hash::sha1_base64(&full_b);
+
+                    match (hash_a, hash_b) {
+                        (Ok(a), Ok(b)) if a != b => {
+                            result.differences.push(DiffEntry {
+                                category: "hash".to_string(),
+                                description: format!("Asset {id} has different content"),
+                                value_a: a,
+                                value_b: b,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            } else {
+                result.differences.push(DiffEntry {
+                    category: "structure".to_string(),
+                    description: format!("Asset {id} only in DCP A"),
+                    value_a: path_a.to_string(),
+                    value_b: String::new(),
+                });
+            }
+        }
+
+        // Check for assets only in B
+        for (id, path_b) in &assets_b {
+            if !assets_a.contains_key(id) {
+                result.differences.push(DiffEntry {
+                    category: "structure".to_string(),
+                    description: format!("Asset {id} only in DCP B"),
+                    value_a: String::new(),
+                    value_b: path_b.to_string(),
+                });
+            }
+        }
+    }
 
     result.identical = result.differences.is_empty();
     result

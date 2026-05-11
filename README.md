@@ -4,7 +4,7 @@
 
 [Documentation](https://postperfection.github.io/dcpdoctor/)
 
-A comprehensive, professional-grade DCP (Digital Cinema Package) validator, analyzer, and diagnostic tool. Built in C++23 for maximum performance.
+A comprehensive, professional-grade DCP (Digital Cinema Package) validator, analyzer, and diagnostic tool. The core library and CLI are written in Rust, with a legacy C++ implementation.
 
 DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standards with the depth and precision required for theatrical distribution.
 
@@ -104,7 +104,19 @@ DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standa
 
 ## Installation
 
-### Dependencies
+### Rust (primary)
+
+```bash
+cd rust
+cargo build --release
+cargo test
+```
+
+The Rust workspace uses [postkit](https://github.com/PostPerfection/postkit) as a git dependency.
+
+### C++ (legacy)
+
+#### Dependencies
 
 | Dependency | Version | Purpose |
 |---|---|---|
@@ -122,10 +134,10 @@ DcpDoctor validates DCPs against SMPTE ST 429/ST 2067, Interop, and BV2.1 standa
 | [spdlog](https://github.com/gabime/spdlog) | Structured logging |
 | [asdcplib](https://github.com/cinecert/asdcplib) | MXF/J2K/PCM essence reading |
 
-### Build
+### C++ Build
 
 ```bash
-git clone --recurse-submodules https://github.com/youruser/dcpdoctor.git
+git clone --recurse-submodules https://github.com/PostPerfection/dcpdoctor.git
 cd dcpdoctor
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
