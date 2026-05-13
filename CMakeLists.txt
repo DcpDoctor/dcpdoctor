@@ -51,11 +51,6 @@ if(NOT TARGET spdlog::spdlog)
   add_subdirectory(extern/spdlog EXCLUDE_FROM_ALL)
 endif()
 
-# postkit (shared post-production library)
-if(NOT TARGET postkit_core)
-  add_subdirectory(extern/postkit EXCLUDE_FROM_ALL)
-endif()
-
 # asdcplib
 if(NOT TARGET libasdcp)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
@@ -125,8 +120,7 @@ if(WIN32)
         XercesC::XercesC
         $<IF:$<TARGET_EXISTS:unofficial::sqlite3::sqlite3>,unofficial::sqlite3::sqlite3,SQLite::SQLite3>
         spdlog::spdlog
-        libasdcp
-        postkit_core)
+        libasdcp)
 else()
     target_link_libraries(dcpdoctor_core PUBLIC
         PkgConfig::LIBXML2
@@ -134,8 +128,7 @@ else()
         PkgConfig::XERCES
         PkgConfig::SQLITE3
         spdlog::spdlog
-        libasdcp
-        postkit_core)
+        libasdcp)
 endif()
 
 # CLI tool (only when building standalone)

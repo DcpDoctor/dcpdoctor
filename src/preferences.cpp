@@ -1,26 +1,100 @@
 #include "dcpdoctor/preferences.h"
-#include "postkit/preferences.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
 
+namespace {
+
+struct PrefsMigration {
+  uint32_t version;
+  std::string description;
+  std::function<std::string(std::string const&)> apply;
+};
+
+uint32_t prefs_version(std::string const& json) {
+  auto pos = json.find("\"version\"");
+  if (pos == std::string::npos) return 0;
+  pos = json.find(':', pos);
+  if (pos == std::string::npos) return 0;
+  pos++;
+  while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t')) pos++;
+  try { return static_cast<uint32_t>(std::stoul(json.substr(pos))); }
+  catch (...) { return 0; }
+}
+
+std::string prefs_set_version(std::string const& json, uint32_t version) {
+  auto pos = json.find("\"version\"");
+  if (pos != std::string::npos) {
+    auto colon = json.find(':', pos);
+    if (colon == std::string::npos) return json;
+    colon++;
+    while (colon < json.size() && (json[colon] == ' ' || json[colon] == '\t')) colon++;
+    auto end = colon;
+    while (end < json.size() && json[end] >= '0' && json[end] <= '9') end++;
+    return json.substr(0, colon) + std::to_string(version) + json.substr(end);
+  }
+  auto brace = json.find('{');
+  if (brace == std::string::npos) return json;
+  return json.substr(0, brace + 1) +
+    "\n  \"version\": " + std::to_string(version) + "," +
+    json.substr(brace + 1);
+}
+
+std::string migrate_preferences(std::string const& json,
+                                std::vector<PrefsMigration> const& migrations) {
+  uint32_t current = prefs_version(json);
+  std::string result = json;
+  auto sorted = migrations;
+  std::sort(sorted.begin(), sorted.end(),
+            [](auto const& a, auto const& b) { return a.version < b.version; });
+  for (auto const& m : sorted) {
+    if (m.version > current && m.apply) {
+      result = m.apply(result);
+      current = m.version;
+    }
+  }
+  result = prefs_set_version(result, current);
+  return result;
+}
+
+std::string json_insert_if_missing(std::string const& json,
+                                   std::string const& key,
+                                   std::string const& value) {
+  std::string search = "\"" + key + "\"";
+  if (json.find(search) != std::string::npos) return json;
+  auto last_brace = json.rfind('}');
+  if (last_brace == std::string::npos) return json;
+  auto insert_pos = last_brace;
+  while (insert_pos > 0 && (json[insert_pos - 1] == ' ' || json[insert_pos - 1] == '\n' ||
+                            json[insert_pos - 1] == '\r' || json[insert_pos - 1] == '\t'))
+    insert_pos--;
+  std::string prefix;
+  if (insert_pos > 0 && json[insert_pos - 1] != '{' && json[insert_pos - 1] != ',')
+    prefix = ",";
+  std::string insertion = prefix + "\n  \"" + key + "\": " + value;
+  return json.substr(0, insert_pos) + insertion + "\n" + json.substr(last_brace);
+}
+
+} // anonymous namespace
+
 static constexpr uint32_t CURRENT_PREFS_VERSION = 1;
 
-static std::vector<postkit::PrefsMigration> migrations()
+static std::vector<PrefsMigration> migrations()
 {
   return {
     {1, "Initial versioned schema", [](std::string const& json) {
-      auto j = postkit::json_insert_if_missing(json, "default_standard", "\"SMPTE\"");
-      j = postkit::json_insert_if_missing(j, "verify_hashes", "true");
-      j = postkit::json_insert_if_missing(j, "verify_schemas", "true");
-      j = postkit::json_insert_if_missing(j, "check_bitrate", "true");
-      j = postkit::json_insert_if_missing(j, "check_loudness", "false");
-      j = postkit::json_insert_if_missing(j, "max_bitrate_mbps", "250");
-      j = postkit::json_insert_if_missing(j, "theme", "\"dark\"");
-      j = postkit::json_insert_if_missing(j, "show_advanced_options", "false");
+      auto j = json_insert_if_missing(json, "default_standard", "\"SMPTE\"");
+      j = json_insert_if_missing(j, "verify_hashes", "true");
+      j = json_insert_if_missing(j, "verify_schemas", "true");
+      j = json_insert_if_missing(j, "check_bitrate", "true");
+      j = json_insert_if_missing(j, "check_loudness", "false");
+      j = json_insert_if_missing(j, "max_bitrate_mbps", "250");
+      j = json_insert_if_missing(j, "theme", "\"dark\"");
+      j = json_insert_if_missing(j, "show_advanced_options", "false");
       return j;
     }},
   };
@@ -108,11 +182,11 @@ Preferences load_preferences()
   std::string json = ss.str();
   f.close();
 
-  uint32_t file_version = postkit::prefs_version(json);
+  uint32_t file_version = prefs_version(json);
   if (file_version < CURRENT_PREFS_VERSION)
   {
     spdlog::info("Migrating preferences from version {} to {}", file_version, CURRENT_PREFS_VERSION);
-    json = postkit::migrate_preferences(json, migrations());
+    json = migrate_preferences(json, migrations());
     std::ofstream out(path);
     if (out.is_open())
     {
